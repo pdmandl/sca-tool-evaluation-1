@@ -1,0 +1,25 @@
+{
+  "title": "SCA Tool Evaluation Framework",
+  "description": "Open-source evaluation framework for benchmarking Software Composition Analysis (SCA) tools against a reproducible, OSV-based ground-truth vulnerability dataset across four package ecosystems (PyPI, npm, Maven, NuGet). Supports normalized tool outputs, matching against the ground truth, and computation of evaluation metrics such as true positives, false negatives, ground-truth-relative false positives, recall, and overlap.",
+  "creators": [
+    {
+      "name": "Mandl, Peter",
+      "affiliation": "University of Applied Sciences Munich"
+    }
+  ],
+  "keywords": [
+    "software composition analysis",
+    "SCA",
+    "vulnerability benchmarking",
+    "ground truth",
+    "evaluation framework",
+    "software supply chain security",
+    "OSV",
+    "CycloneDX"
+  ],
+  "license": "Apache-2.0",
+  "upload_type": "software",
+  "access_right": "open",
+  "version": "0.1.0",
+  "language": "eng"
+}

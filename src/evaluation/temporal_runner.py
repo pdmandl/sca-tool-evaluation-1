@@ -1,0 +1,605 @@
+
+"""Run repeated multi-tool evaluations and aggregate the resulting metrics.
+
+This module orchestrates repeated evaluation runs over a fixed ground-truth
+dataset. For each configured tool, it isolates per-run artifacts, executes the
+normal evaluation entry point, captures repeat-stability hashes, aggregates the
+resulting metrics, and computes statistical significance tests over the combined
+ground-truth detection vectors.
+
+Primary outputs include JSON summaries, LaTeX tables, plain-text summaries,
+plots, and a run-level status file that can be archived together with the
+experiment artifacts.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import logging
+import os
+import shutil
+import time
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable
+
+from evaluation.analysis.plots import plot_significance_matrix, plot_tool_comparison
+from evaluation.analysis.significance import (
+    build_detection_matrix_from_vectors,
+    cochran_q_test,
+    holm,
+    pairwise_mcnemar_from_matrix,
+    write_significance_latex,
+)
+from evaluation.analysis.statistics import (
+    add_confidence_intervals,
+    aggregate,
+    build_gt_summary,
+    compute_significance_markers,
+    write_ecosystem_summary_table,
+    write_latex_stats,
+)
+from evaluation.core.ground_truth import load_ground_truth
+from evaluation.core.model import Finding
+from evaluation.evaluate import run_evaluation
+
+log = logging.getLogger("evaluation.temporal")
+
+
+def get_tools() -> list[str]:
+    """
+    Return the ordered tool list for temporal evaluation runs.
+
+    The list is read from the ``EVAL_TOOLS`` environment variable so that the same
+    code path can be reused in local runs, CI, and archived experiments. A small
+    default set is provided for convenience.
+    """
+    return os.environ.get(
+        "EVAL_TOOLS",
+        "dtrack oss-index github snyk trivy",
+    ).split()
+
+
+def setup_logger(run_dir: Path) -> None:
+    """
+    Configure a file-based logger for one temporal run directory.
+
+    Each invocation resets previous handlers to avoid duplicate log lines when the
+    module is reused programmatically. The resulting ``run.log`` file becomes part
+    of the archived experiment artifacts.
+    """
+    log.setLevel(logging.INFO)
+    log.propagate = False
+
+    for handler in list(log.handlers):
+        log.removeHandler(handler)
+
+    fh = logging.FileHandler(run_dir / "run.log", mode="w")
+    fh.setFormatter(
+        logging.Formatter(
+            "%(asctime)s | %(levelname)-5s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+    )
+    log.addHandler(fh)
+
+
+def hash_findings(findings: Iterable[Finding]) -> str:
+    """
+    Create a stable content hash for a normalized finding set.
+
+    The hash intentionally uses only evaluation-relevant identifiers so that repeat
+    consistency can be checked independently of output ordering or incidental
+    formatting differences.
+    """
+    payload = sorted(
+        [f.ecosystem, f.component, f.version, f.cve or f.osv_id or ""]
+        for f in findings
+    )
+    encoded = json.dumps(
+        payload,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+@contextmanager
+def working_directory(path: Path):
+    """
+    Temporarily switch the process working directory.
+
+    Some adapters and helper scripts write artifacts relative to the current
+    working directory. This context manager isolates those side effects per tool and
+    per repeat.
+    """
+    previous = Path.cwd()
+    path.mkdir(parents=True, exist_ok=True)
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(previous)
+
+
+@contextmanager
+def tool_output_environment(tool_dir: Path):
+    """
+    Temporarily redirect output-related environment variables.
+
+    Several downstream components inspect environment variables to determine where
+    artifacts should be written. During repeated runs we point all of them to the
+    tool-local artifact directory and restore the previous values afterwards.
+    """
+    old_values = {
+        "EVAL_ARTIFACTS_DIR": os.environ.get("EVAL_ARTIFACTS_DIR"),
+        "TOOL_OUTPUT_DIR": os.environ.get("TOOL_OUTPUT_DIR"),
+        "OUTPUT_DIR": os.environ.get("OUTPUT_DIR"),
+        "GROUND_TRUTH_BUILD_PATH": os.environ.get("GROUND_TRUTH_BUILD_PATH"),
+    }
+
+    os.environ["EVAL_ARTIFACTS_DIR"] = str(tool_dir)
+    os.environ["TOOL_OUTPUT_DIR"] = str(tool_dir)
+    os.environ["OUTPUT_DIR"] = str(tool_dir)
+    os.environ["GROUND_TRUTH_BUILD_PATH"] = str(tool_dir)
+
+    try:
+        yield
+    finally:
+        for key, old_value in old_values.items():
+            if old_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old_value
+
+
+def tool_artifact_dir(run_dir: Path, repeat_idx: int, tool: str) -> Path:
+    """
+    Return the artifact directory for one tool in one repeat.
+    """
+    return run_dir / "artifacts" / f"repeat_{repeat_idx + 1}" / tool
+
+
+def prepare_tool_inputs(tool_dir: Path, gt_path: Path, sbom_path: Path | None):
+    """
+    Copy the ground truth and optional SBOM into the tool-local directory.
+
+    This keeps each tool execution self-contained and ensures that generated
+    artifacts can later be inspected without depending on external relative paths.
+    """
+    tool_dir.mkdir(parents=True, exist_ok=True)
+
+    local_gt = tool_dir / gt_path.name
+    shutil.copy2(gt_path, local_gt)
+
+    local_sbom = None
+    if sbom_path and sbom_path.exists():
+        local_sbom = tool_dir / sbom_path.name
+        shutil.copy2(sbom_path, local_sbom)
+
+    return local_gt, local_sbom
+
+
+def write_json(path: Path, payload: Any) -> None:
+    """
+    Serialize a Python object as UTF-8 encoded pretty-printed JSON.
+    """
+    path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+def write_text(path: Path, text: str) -> None:
+    """
+    Write a UTF-8 encoded plain-text artifact to disk.
+    """
+    path.write_text(text, encoding="utf-8")
+
+
+def extract_repeat_metric_runs(
+    runs: list[dict[str, Any]],
+    tools: list[str],
+) -> list[dict[str, Any]]:
+    """
+    Extract the per-repeat metric payloads from raw run results.
+
+    The temporal runner stores more than just metrics per repeat. This helper keeps
+    only the nested ``per_ecosystem`` metric structures expected by the aggregation
+    functions.
+    """
+    return [
+        {tool: runs[idx][tool]["metrics"] for tool in tools}
+        for idx in range(len(runs))
+    ]
+
+
+def collapse_repeat_metrics(
+    repeat_metric_runs: list[dict[str, Any]],
+    tools: list[str],
+) -> dict[str, Any]:
+    """
+    Collapse repeated metric runs into a simple mean-based snapshot.
+
+    Count-like fields are converted back to integers where the averaged value is
+    effectively integral. Ratio-like metrics remain floating-point values.
+    """
+    if not repeat_metric_runs:
+        return {}
+
+    collapsed: dict[str, Any] = {}
+
+    for tool in tools:
+        collapsed[tool] = {}
+        ecosystems = repeat_metric_runs[0][tool].keys()
+
+        for eco in ecosystems:
+            collapsed[tool][eco] = {}
+            metric_names = repeat_metric_runs[0][tool][eco].keys()
+
+            for metric_name in metric_names:
+                values = [repeat[tool][eco][metric_name] for repeat in repeat_metric_runs]
+                mean_value = sum(values) / len(values)
+
+                if metric_name in {"TP", "FP", "FN", "Components", "Vulnerabilities", "CVEs"}:
+                    rounded = round(mean_value)
+                    if abs(mean_value - rounded) < 1e-9:
+                        collapsed[tool][eco][metric_name] = int(rounded)
+                    else:
+                        collapsed[tool][eco][metric_name] = float(mean_value)
+                else:
+                    collapsed[tool][eco][metric_name] = float(mean_value)
+
+    return collapsed
+
+
+def summarize_tool_metrics(agg: dict[str, Any]) -> list[dict[str, Any]]:
+    """
+    Build a compact cross-tool summary from aggregated metrics.
+
+    The summary is intended for human-readable overview files and quick inspection
+    of the relative ranking of tools across all ecosystems.
+    """
+    summary = []
+
+    for tool in sorted(agg.keys()):
+        ecosystems = sorted(agg[tool].keys())
+        if not ecosystems:
+            continue
+
+        mean_recall = sum(agg[tool][eco]["Recall"]["mean"] for eco in ecosystems) / len(ecosystems)
+        mean_overlap = sum(agg[tool][eco]["Overlap"]["mean"] for eco in ecosystems) / len(ecosystems)
+        total_tp = sum(agg[tool][eco]["TP"]["mean"] for eco in ecosystems)
+        total_fp = sum(agg[tool][eco]["FP"]["mean"] for eco in ecosystems)
+        total_fn = sum(agg[tool][eco]["FN"]["mean"] for eco in ecosystems)
+
+        summary.append(
+            {
+                "tool": tool,
+                "ecosystems": ecosystems,
+                "mean_recall": float(mean_recall),
+                "mean_overlap": float(mean_overlap),
+                "total_tp": float(total_tp),
+                "total_fp": float(total_fp),
+                "total_fn": float(total_fn),
+            }
+        )
+
+    summary.sort(key=lambda row: (-row["mean_recall"], row["tool"]))
+    return summary
+
+
+def summarize_repeat_consistency(
+    runs: list[dict[str, Any]],
+    repeat_hashes: list[dict[str, str]],
+    tools: list[str],
+) -> dict[str, Any]:
+    """
+    Summarize whether repeated runs produced identical findings.
+
+    Repeat stability is assessed via the finding hashes captured for each tool and
+    repeat. This makes it easy to identify temporal or adapter-induced instability.
+    """
+    comparison: dict[str, Any] = {}
+
+    for tool in tools:
+        hashes = [repeat_hashes[idx][tool] for idx in range(len(repeat_hashes))]
+        per_repeat = []
+
+        for repeat_idx in range(len(runs)):
+            per_repeat.append(
+                {
+                    "repeat": repeat_idx + 1,
+                    "hash": runs[repeat_idx][tool]["hash"],
+                    "metrics": runs[repeat_idx][tool]["metrics"],
+                }
+            )
+
+        comparison[tool] = {
+            "stable": len(set(hashes)) == 1,
+            "hashes": hashes,
+            "repeats": per_repeat,
+        }
+
+    return comparison
+
+
+def render_tool_summary_text(
+    tool_summary: list[dict[str, Any]],
+    markers: dict[str, str],
+    baseline: str,
+) -> str:
+    """
+    Render the compact tool comparison summary as plain text.
+    """
+    lines = [
+        f"Baseline for significance markers: {baseline}",
+        "",
+        "Tool comparison summary",
+        "=======================",
+    ]
+
+    for row in tool_summary:
+        marker = markers.get(row["tool"], "")
+        lines.append(
+            (
+                f"- {row['tool']}{marker}: mean_recall={row['mean_recall']:.4f}, "
+                f"mean_overlap={row['mean_overlap']:.4f}, "
+                f"total_tp={row['total_tp']:.2f}, total_fp={row['total_fp']:.2f}, "
+                f"total_fn={row['total_fn']:.2f}"
+            )
+        )
+
+    return "\n".join(lines) + "\n"
+
+
+def render_repeat_comparison_text(repeat_comparison: dict[str, Any]) -> str:
+    """
+    Render repeat-stability information as plain text.
+    """
+    lines = [
+        "Tool repeat comparison",
+        "======================",
+    ]
+
+    for tool in sorted(repeat_comparison.keys()):
+        row = repeat_comparison[tool]
+        hashes = ", ".join(row["hashes"])
+        lines.append(f"- {tool}: stable={row['stable']} | hashes=[{hashes}]")
+
+    return "\n".join(lines) + "\n"
+
+
+def build_combined_detection_vectors(
+    runs: list[dict[str, Any]],
+    tools: list[str],
+) -> dict[str, list[int]]:
+    """
+    Concatenate repeat-level GT detection vectors per tool.
+
+    The resulting vectors are the direct input for significance testing across all
+    repeats because they preserve the paired detection decisions for every ground-
+    truth item in every run.
+    """
+    """
+    Combine all repeats by concatenating the per-repeat GT detection vectors.
+
+    Example:
+    - GT size = 8
+    - repeats = 2
+    -> significance is computed on 16 paired observations per tool
+    """
+    combined: dict[str, list[int]] = {}
+
+    for tool in tools:
+        values: list[int] = []
+        for run in runs:
+            gt_detection = run[tool].get("gt_detection")
+            if gt_detection is None:
+                raise RuntimeError(f"{tool} is missing gt_detection for significance analysis")
+            values.extend(int(x) for x in gt_detection)
+        combined[tool] = values
+
+    return combined
+
+
+def run_temporal(gt_path: str, sbom_path: str | None, output_dir: str) -> None:
+    """
+    Execute the full repeated multi-tool evaluation workflow.
+
+    This function coordinates repeated execution, significance testing, aggregation,
+    plot generation, artifact writing, and final run-status reporting.
+    """
+    start_time = time.time()
+    tools = get_tools()
+
+    gt_path = Path(gt_path)
+    sbom = Path(sbom_path) if sbom_path else None
+    run_dir = Path(output_dir)
+
+    run_dir.mkdir(parents=True, exist_ok=True)
+    setup_logger(run_dir)
+
+    started_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+    log.info("STARTED | %s", started_at)
+
+    gt0 = load_ground_truth(gt_path)
+
+    runs: list[dict[str, Any]] = []
+    repeat_hashes: list[dict[str, str]] = []
+
+    for repeat_idx in range(2):
+        log.info("REPEAT %d/2", repeat_idx + 1)
+        run_result: dict[str, Any] = {}
+        repeat_hash_row: dict[str, str] = {}
+
+        for tool in tools:
+            tool_dir = tool_artifact_dir(run_dir, repeat_idx, tool)
+            local_gt, local_sbom = prepare_tool_inputs(tool_dir, gt_path, sbom)
+
+            with tool_output_environment(tool_dir):
+                with working_directory(tool_dir):
+                    try:
+                        res = run_evaluation(
+                            ground_truth_path=str(local_gt),
+                            tool=tool,
+                            return_findings=True,
+                            return_metrics=True,
+                        )
+                    except Exception as e:
+                        log.error("Tool %s failed in repeat %d/2: %s", tool, repeat_idx + 1, e)
+                        raise SystemExit(2) from e
+
+            if not res:
+                raise RuntimeError(f"{tool} returned no structured evaluation payload")
+
+            findings = res["findings"]
+            gt_detection = res.get("gt_detection_vector")
+
+            if gt_detection is None:
+                raise RuntimeError(f"{tool} did not return gt_detection_vector")
+
+            finding_hash = hash_findings(findings)
+            repeat_hash_row[tool] = finding_hash
+
+            run_result[tool] = {
+                "hash": finding_hash,
+                "metrics": res["metrics"]["per_ecosystem"],
+                "gt_detection": gt_detection,
+            }
+
+        runs.append(run_result)
+        repeat_hashes.append(repeat_hash_row)
+
+    # -----------------------------------
+    # Significance over all repeats
+    # -----------------------------------
+    detection_vectors_by_tool = build_combined_detection_vectors(runs, tools)
+    matrix, tool_order = build_detection_matrix_from_vectors(detection_vectors_by_tool)
+
+    q_stat, p_q = cochran_q_test(matrix)
+    rows = pairwise_mcnemar_from_matrix(matrix, tool_order)
+    rows = holm(rows)
+
+    write_significance_latex(
+        q_stat,
+        p_q,
+        rows,
+        run_dir / "recall_significance.tex",
+    )
+
+    recall_significance_payload = {
+        "tools": tool_order,
+        "repeat_count": len(runs),
+        "ground_truth_size_per_repeat": len(gt0),
+        "significance_input": "all_repeats_concatenated",
+        "matrix_shape": [int(matrix.shape[0]), int(matrix.shape[1])],
+        "cochran_q": {
+            "statistic": float(q_stat),
+            "p_value": float(p_q),
+        },
+        "pairwise_mcnemar": rows,
+    }
+    write_json(run_dir / "recall_significance.json", recall_significance_payload)
+
+    plot_significance_matrix(rows, tool_order, run_dir / "recall_significance_matrix.png")
+    plot_significance_matrix(rows, tool_order, run_dir / "significance_matrix.png")
+
+    # -----------------------------------
+    # Aggregation / summaries / plots
+    # -----------------------------------
+    repeat_metric_runs = extract_repeat_metric_runs(runs, tools)
+    agg = add_confidence_intervals(aggregate(repeat_metric_runs))
+    gt_summary = build_gt_summary(gt0)
+    markers = compute_significance_markers(rows, baseline="oss-index")
+
+    write_latex_stats(
+        agg,
+        gt_summary,
+        run_dir / "aggregated_results.tex",
+        markers=markers,
+    )
+    write_ecosystem_summary_table(
+        agg,
+        gt_summary,
+        run_dir / "ecosystem_summary.tex",
+    )
+
+    collapsed_results = collapse_repeat_metrics(repeat_metric_runs, tools)
+    write_json(run_dir / "experimental_results.json", collapsed_results)
+
+    tool_summary = summarize_tool_metrics(agg)
+    tool_summary_payload = {
+        "baseline": "oss-index",
+        "markers": markers,
+        "tools": tool_summary,
+    }
+    write_json(run_dir / "tool_comparison_summary.json", tool_summary_payload)
+    write_text(
+        run_dir / "tool_comparison_summary.txt",
+        render_tool_summary_text(tool_summary, markers, baseline="oss-index"),
+    )
+
+    repeat_comparison = summarize_repeat_consistency(runs, repeat_hashes, tools)
+    write_json(run_dir / "tool_repeat_comparison.json", repeat_comparison)
+    write_text(
+        run_dir / "tool_repeat_comparison.txt",
+        render_repeat_comparison_text(repeat_comparison),
+    )
+
+    plot_tool_comparison(agg, run_dir / "tool_comparison.png")
+
+    duration_seconds = time.time() - start_time
+    finished_at = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
+    run_status = {
+        "status": "success",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "started_at_local": started_at,
+        "finished_at_local": finished_at,
+        "duration_seconds": float(duration_seconds),
+        "repeat_count": len(runs),
+        "tool_count": len(tools),
+        "tools": tools,
+        "repeat_hash_stability": {
+            tool: len({row[tool] for row in repeat_hashes}) == 1
+            for tool in tools
+        },
+        "outputs": {
+            "results_json": "experimental_results.json",
+            "aggregated_results_tex": "aggregated_results.tex",
+            "ecosystem_summary_tex": "ecosystem_summary.tex",
+            "recall_significance_tex": "recall_significance.tex",
+            "recall_significance_json": "recall_significance.json",
+            "recall_significance_matrix_png": "recall_significance_matrix.png",
+            "tool_comparison_png": "tool_comparison.png",
+            "tool_comparison_summary_json": "tool_comparison_summary.json",
+            "tool_comparison_summary_txt": "tool_comparison_summary.txt",
+            "tool_repeat_comparison_json": "tool_repeat_comparison.json",
+            "tool_repeat_comparison_txt": "tool_repeat_comparison.txt",
+        },
+    }
+    write_json(run_dir / "run_status.json", run_status)
+
+    log.info("Temporal evaluation completed in %.2fs", duration_seconds)
+    log.info("Run-level artifacts written to: %s", run_dir)
+    log.info("FINISHED | %s | duration=%.2fs", finished_at, duration_seconds)
+
+
+def main() -> None:
+    """
+    Parse CLI arguments and launch the temporal evaluation workflow.
+    """
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--ground-truth", required=True)
+    ap.add_argument("--sbom", required=False, default=None)
+    ap.add_argument("--output", required=True)
+
+    args = ap.parse_args()
+    run_temporal(args.ground_truth, args.sbom, args.output)
+
+
+if __name__ == "__main__":
+    main()

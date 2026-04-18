@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as follows."
+title: "SCA Tool Evaluation Framework"
+version: "0.1.0"
+type: software
+authors:
+  - family-names: "Mandl"
+    given-names: "Peter"
+    affiliation: "University of Applied Sciences Munich"
+    email: "peter.mandl@hm.edu"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # TODO: insert ORCID
+abstract: >
+  Open-source evaluation framework for benchmarking software
+  composition analysis (SCA) tools against a reproducible,
+  OSV-based ground-truth vulnerability dataset across four
+  package ecosystems (PyPI, npm, Maven, NuGet).
+keywords:
+  - software composition analysis
+  - SCA
+  - vulnerability benchmarking
+  - ground truth
+  - evaluation framework
+  - software supply chain security
+  - OSV
+  - CycloneDX
+license: Apache-2.0
+repository-code: "https://github.com/prcmandl/sca-tool-evaluation"
+url: "https://github.com/prcmandl/sca-tool-evaluation"
+# TODO: set a real release date once v0.1.0 is tagged
+date-released: "2026-04-18"
+# TODO: once the accompanying paper is published, point preferred-citation
+# to the paper instead of the software artifact (type: article, add journal,
+# volume, pages, DOI, year).
+preferred-citation:
+  type: software
+  title: "SCA Tool Evaluation Framework"
+  version: "0.1.0"
+  authors:
+    - family-names: "Mandl"
+      given-names: "Peter"
+      affiliation: "University of Applied Sciences Munich"
+  publisher: "Zenodo"
+  # TODO: replace with the Zenodo DOI once archived
+  doi: "10.5281/zenodo.XXXXXXX"
+  url: "https://doi.org/10.5281/zenodo.XXXXXXX"
+  year: 2026
