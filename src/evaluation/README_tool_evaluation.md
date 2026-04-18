@@ -20,6 +20,9 @@
         │  └───────┬───────┘     │  Dependency-Track    │   │
         │          │             │  OSV Scanner         │   │
         │          │             │  GitHub Advisory DB  │   │
+        │          │             │  Snyk CLI            │   │
+        │          │             │  Trivy CLI           │   │
+        │          │             │  OSS Index (Sonatype)│   │
         │          │             └─────────┬────────────┘   │
         │          │                       │                │
         │          ▼                       ▼                │
@@ -103,11 +106,14 @@ uniform way.
 
 ### 3.1 Currently integrated adapters
 
-| Adapter | Description |
-|------|-------------|
-| Dependency-Track | Classic SBOM-based SCA scanner |
-| OSV | OSV as a standalone scanner |
-| GitHub Advisory DB | GitHub Security Advisories (GHSA) |
+| Adapter | CLI id | Description |
+|---------|--------|-------------|
+| Dependency-Track | `dtrack` | SBOM-based SCA scanner (self-hosted) |
+| OSV | `osv` | OSV.dev as a standalone scanner |
+| GitHub Advisory DB | `github` | GitHub Security Advisories (GHSA) |
+| Snyk | `snyk` | Snyk CLI (`snyk sbom test`) |
+| Trivy | `trivy` | Aqua Trivy CLI |
+| OSS Index | `oss-index` | Sonatype OSS Index API |
 
 All adapters produce **normalized findings** in the same internal model.
 
