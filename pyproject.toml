@@ -58,7 +58,11 @@ numpy = "^2.4.4"
 packaging = "^26.1"
 requests = "^2.33.1"
 scipy = "^1.17.1"
-semantic-version = "^2.10.0"
+# Pinned to an exact version: upstream is effectively unmaintained
+# (last release 2022-05, last commit 2023-02). 2.10.0 is stable and
+# provides the NpmSpec range parser required by the GitHub Advisory
+# adapter. Revisit (e.g. migrate to `univers`) if issues arise.
+semantic-version = "2.10.0"
 tqdm = "^4.67.3"
 
 [tool.poetry.group.dev.dependencies]
