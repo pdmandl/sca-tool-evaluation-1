@@ -1,0 +1,55 @@
+\begin{table*}[!t]
+\centering
+\small
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Ecosystem & Components & Vulnerabilities & CVEs & TP & FP & FN & Recall & Overlap \\
+\midrule
+\multicolumn{9}{c}{\textbf{snyk}} \\
+\midrule
+maven & 99 & 250 & 42 & 204 & 314 & 46 & 0.82* & 0.39 \\
+npm & 66 & 250 & 19 & 211 & 80 & 39 & 0.84* & 0.73 \\
+nuget & 189 & 250 & 36 & 250 & 3 & 0 & 1.00* & 0.99 \\
+pypi & 76 & 250 & 93 & 240 & 142 & 10 & 0.96* & 0.63 \\
+\midrule
+\textbf{TOTAL} & 430 & 1000 & 190 & 905 & 539 & 95 & 0.91* & 0.68 \\
+\midrule
+\multicolumn{9}{c}{\textbf{oss-index}} \\
+\midrule
+maven & 99 & 250 & 42 & 136 & 52 & 114 & 0.54 & 0.72 \\
+npm & 66 & 250 & 19 & 99 & 1 & 151 & 0.40 & 0.99 \\
+nuget & 189 & 250 & 36 & 204 & 7 & 46 & 0.82 & 0.97 \\
+pypi & 76 & 250 & 93 & 197 & 180 & 53 & 0.79 & 0.52 \\
+\midrule
+\textbf{TOTAL} & 430 & 1000 & 190 & 636 & 240 & 364 & 0.64 & 0.80 \\
+\midrule
+\multicolumn{9}{c}{\textbf{github}} \\
+\midrule
+maven & 99 & 250 & 42 & 233 & 375 & 17 & 0.93* & 0.38 \\
+npm & 66 & 250 & 19 & 250 & 193 & 0 & 1.00* & 0.56 \\
+nuget & 189 & 250 & 36 & 250 & 103 & 0 & 1.00* & 0.71 \\
+pypi & 76 & 250 & 93 & 216 & 304 & 34 & 0.86* & 0.42 \\
+\midrule
+\textbf{TOTAL} & 430 & 1000 & 190 & 949 & 975 & 51 & 0.95* & 0.52 \\
+\midrule
+\multicolumn{9}{c}{\textbf{trivy}} \\
+\midrule
+maven & 99 & 250 & 42 & 250 & 193 & 0 & 1.00* & 0.56 \\
+npm & 66 & 250 & 19 & 250 & 60 & 0 & 1.00* & 0.81 \\
+nuget & 189 & 250 & 36 & 237 & 3 & 13 & 0.95* & 0.99 \\
+pypi & 76 & 250 & 93 & 241 & 100 & 9 & 0.96* & 0.71 \\
+\midrule
+\textbf{TOTAL} & 430 & 1000 & 190 & 978 & 356 & 22 & 0.98* & 0.77 \\
+\midrule
+\multicolumn{9}{c}{\textbf{dtrack}} \\
+\midrule
+maven & 99 & 250 & 42 & 250 & 193 & 0 & 1.00* & 0.56 \\
+npm & 66 & 250 & 19 & 250 & 60 & 0 & 1.00* & 0.81 \\
+nuget & 189 & 250 & 36 & 235 & 0 & 15 & 0.94* & 1.00 \\
+pypi & 76 & 250 & 93 & 173 & 97 & 77 & 0.69* & 0.64 \\
+\midrule
+\textbf{TOTAL} & 430 & 1000 & 190 & 908 & 350 & 92 & 0.91* & 0.75 \\
+\midrule
+\bottomrule
+\end{tabular}
+\end{table*}

@@ -65,5 +65,5 @@ export ECOSYSTEMS="maven pypi npm nuget"
 # Run
 # ------------------------------------------------------------
 echo "=== Starting dataset generation ==="
-poetry run python -m new_ground_truth_generation.build_multi_ground_truth_dataset
+poetry run python -m ground_truth_generation.build_multi_ground_truth_dataset
 echo "=== Done ==="

@@ -6,9 +6,9 @@ type: software
 authors:
   - family-names: "Mandl"
     given-names: "Peter"
-    affiliation: "University of Applied Sciences Munich"
+    affiliation: "Munich University of Applied Sciences"
     email: "peter.mandl@hm.edu"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"  # TODO: insert ORCID
+    orcid: "https://orcid.org/0000-0003-4508-7667"
 abstract: >
   Open-source evaluation framework for benchmarking software
   composition analysis (SCA) tools against a reproducible,
@@ -38,7 +38,8 @@ preferred-citation:
   authors:
     - family-names: "Mandl"
       given-names: "Peter"
-      affiliation: "University of Applied Sciences Munich"
+      affiliation: "Munich University of Applied Sciences"
+      orcid: "https://orcid.org/0000-0003-4508-7667"
   publisher: "Zenodo"
   # TODO: replace with the Zenodo DOI once archived
   doi: "10.5281/zenodo.XXXXXXX"

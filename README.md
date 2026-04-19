@@ -95,12 +95,20 @@ The current evaluation pipeline includes adapters for:
 │       └── README_tool_evaluation.md
 ├── ground_truth_generation/
 ├── build_multi_ground_truth_dataset.py
+├── results/
+│   ├── paper/         # archived evaluation runs referenced by the paper
+│   ├── sbom/          # CycloneDX SBOM of the framework
+│   └── coverage/      # pytest coverage report (Cobertura XML)
 ├── pyproject.toml
 ├── README.md
 ├── LICENSE
 ├── CITATION.cff
 └── .zenodo.json
 ```
+
+Archived paper results, the framework SBOM, and the coverage report are
+bundled under [`results/`](results/README.md) so reviewers can inspect the
+exact numbers cited in the paper without rerunning the pipeline.
 
 ## Installation
 
@@ -147,7 +155,7 @@ export BALANCE=false
 export BALANCE_STRATEGY=min
 export MIN_UNIQUE_COMPONENT_RATIO=0.5
 
-poetry run python build_multi_ground_truth_dataset.py
+poetry run python -m ground_truth_generation.build_multi_ground_truth_dataset
 ```
 
 Typical generated artifacts:
@@ -233,6 +241,51 @@ In conceptual terms, a ground-truth observation corresponds to a vulnerable tupl
 ```text
 (ecosystem, component_name, component_version, vulnerability_id)
 ```
+
+## Evaluation Methodology
+
+The evaluation is **project-centric**: a project state is a fixed set of (ecosystem, component, version) tuples. Tools are expected to report vulnerabilities only for those exact pairs; findings for other versions or components are treated as over-approximation and counted as false positives.
+
+### Ground-truth invariant
+
+At dataset creation time, the ground truth contains every vulnerability that the OSV reference database lists as affecting a given (ecosystem, component, version). The dataset is **time-fixed and immutable** — later OSV updates do not retroactively change a published ground truth.
+
+### Matching semantics
+
+A tool finding `(e, c, v', I')` is compared to a ground-truth entry `(e, c, v, I)` using:
+
+- **Identifier match:** `I ∩ I' ≠ ∅` (at least one CVE, GHSA, or OSV-ID in common).
+- **Version match:**
+  - `TP_EXACT` — `v' == v`
+  - `TP_RANGE` — `v ∈ range(v')` when the tool reports an affected version range
+
+No fuzzy string matching is used anywhere in the pipeline.
+
+### Classification
+
+- **TP** — tool finding matches a ground-truth entry (identifier + version)
+- **FP** — tool finding matches no ground-truth entry
+- **FN** — ground-truth entry has no matching tool finding
+
+False negatives are further broken down with a strict precedence:
+
+`FN_exact  →  FN_range  →  FN_true`
+
+- `FN_exact` — tool reported the same `(c, v)` but with non-matching identifiers
+- `FN_range` — tool reported only ranges that cannot be safely decided
+- `FN_true`  — tool reported nothing relevant for `(c, v)`
+
+### Architectural invariant
+
+The pipeline is organized as three concerns with strict separation:
+
+> **Evaluation decides. Analysis explains. Reporting presents.**
+
+Each layer consumes only the output of the layer above; normalization is applied symmetrically on ground-truth and tool sides (see `evaluation/core/normalization.py`).
+
+### Reproducibility guarantee
+
+Given identical ground truth, tool configuration, and tool version, the framework produces deterministic, comparable results. Randomness (balancing, sub-sampling) is controlled via `RANDOM_SEED`.
 
 ## Evaluation Metrics
 
@@ -359,12 +412,12 @@ A practical publication setup is:
 
 The project uses environment variables extensively for reproducible experiment setup, ground-truth generation, adapter configuration, and publication-ready reruns. A practical setup is to maintain a local `.env` file and export its variables before running the pipeline.
 
-A documented example configuration is provided via an environment template such as `env_documentation.sh`. For local use, copy it to a non-versioned `.env` file, replace all placeholder values, and export the variables into your shell session.
+A fully documented template is provided via `.env_example`. For local use, copy it to a non-versioned `.env` file, replace all placeholder values, and export the variables into your shell session.
 
 ### Recommended usage pattern
 
 ```bash
-cp env_documentation.sh .env
+cp .env_example .env
 # edit .env and replace placeholder values
 set -a
 source .env
@@ -488,7 +541,7 @@ In newer runner-based setups, some variables are documented for transparency but
 - `OUTPUT_DIR`
 
 For this reason, the safest publication setup is:
-- keep a documented template such as `env_documentation.sh` or `.env.example`,
+- keep a documented template such as `.env_example`,
 - store secrets only in local, ignored files,
 - let the orchestration layer assign run-specific output paths where applicable.
 
@@ -534,7 +587,7 @@ export ECOSYSTEMS="nuget maven pypi npm"
 export START_DATE=2020-01-01
 export END_DATE=2026-01-25
 export BALANCE=false
-poetry run python build_multi_ground_truth_dataset.py
+poetry run python -m ground_truth_generation.build_multi_ground_truth_dataset
 
 # 2) Evaluate one tool
 poetry run python -m evaluation.evaluate \

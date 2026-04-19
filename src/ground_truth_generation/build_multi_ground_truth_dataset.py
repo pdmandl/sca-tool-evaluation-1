@@ -21,7 +21,7 @@ import os
 import re
 from datetime import datetime, timezone
 
-from ground_truth_generation.statistics import write_statistics
+from ground_truth_generation.gt_statistics import write_statistics
 
 # ------------------------------------------------------------
 # Logging
