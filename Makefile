@@ -49,6 +49,13 @@ check-tools:
 
 check-sonarqube:
 	@test -f $(SONAR_PROP) || { echo "Missing: $(SONAR_PROP)"; exit 1; }
+	@command -v $(SONAR_SCANNER) >/dev/null 2>&1 || { \
+	  echo "ERROR: '$(SONAR_SCANNER)' not found on PATH."; \
+	  echo "       Install via: brew install sonar-scanner   (macOS)"; \
+	  echo "       or download:  https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/sonarscanner/"; \
+	  echo "       See section 11 of .env_example for details."; \
+	  exit 1; \
+	}
 
 # ---------------------------------------------------------------------------
 # Testing
@@ -92,13 +99,27 @@ sbom: $(SBOM_DIR) ## Generate CycloneDX SBOM (JSON + XML) from poetry.lock
 # ---------------------------------------------------------------------------
 sonar: check-sonarqube ## Run SonarQube scanner (requires SONAR_URL, SONAR_TOKEN)
 	@if [ -z "$(SONAR_URL)" ] || [ -z "$(SONAR_TOKEN)" ]; then \
-	  echo "ERROR: set SONAR_URL and SONAR_TOKEN before running 'make sonar'"; \
+	  echo "ERROR: SONAR_URL and/or SONAR_TOKEN are not set."; \
+	  echo "       See section 11 of .env_example for setup instructions."; \
+	  echo "       Typical invocation:"; \
+	  echo "         SONAR_URL=https://sonar.example.com \\"; \
+	  echo "         SONAR_TOKEN=squ_xxxxxxxxxxxx \\"; \
+	  echo "         make sonar"; \
 	  exit 1; \
+	fi
+	@if [ ! -f "$(COVERAGE_DIR)/coverage.xml" ]; then \
+	  echo "ERROR: coverage report '$(COVERAGE_DIR)/coverage.xml' not found."; \
+	  echo "       Generate it first with:  make coverage"; \
+	  exit 1; \
+	fi
+	@if [ ! -f "$(SBOM_JSON)" ]; then \
+	  echo "WARN:  SBOM '$(SBOM_JSON)' not found — scan will run without SBOM."; \
+	  echo "       Generate with:  make sbom   (recommended before 'make sonar')"; \
 	fi
 	@echo "[INFO] Running SonarQube scanner against $(SONAR_URL)"
 	@$(SONAR_SCANNER) \
 	  -Dsonar.host.url=$(SONAR_URL) \
-	  -Dsonar.login=$(SONAR_TOKEN) \
+	  -Dsonar.token=$(SONAR_TOKEN) \
 	  -Dsonar.projectBaseDir=. \
 	  -Dsonar.sbom.jsonReportPath=$(SBOM_JSON) \
 	  -Dsonar.python.coverage.reportPaths=$(COVERAGE_DIR)/coverage.xml
