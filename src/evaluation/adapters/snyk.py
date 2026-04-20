@@ -58,7 +58,7 @@ class SnykAdapter(VulnerabilityToolAdapter):
         self.bash_script = (
             env.get("SNYK_BASH_SCRIPT")
             or os.environ.get("SNYK_BASH_SCRIPT")
-            or str(Path(__file__).resolve().parents[3] / "tools" / "evaluate_snyk.sh")
+            or ""
         )
 
         self.max_attempts = int(

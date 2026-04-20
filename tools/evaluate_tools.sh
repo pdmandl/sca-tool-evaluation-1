@@ -77,8 +77,6 @@ require_env OSSINDEX_TOKEN
 #-----------------------------------------------------------------------------------
 export SNYK_BIN="${SNYK_BIN:-/usr/local/bin/snyk}"
 export BASH_PATH="${BASH_PATH:-/bin/bash}"
-export SNYK_BASH_SCRIPT="${CODEBASE}/tools/evaluate_snyk.sh"
-echo "SNYK Bash Script: ${SNYK_BASH_SCRIPT}"
 
 
 #-----------------------------------------------------------------------------------

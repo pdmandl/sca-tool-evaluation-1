@@ -86,7 +86,7 @@ The following places **must** be updated for a new adapter `mytool`:
    the CLI id in backticks) and, if the repository tree is referenced, add
    `mytool.py` there.
 
-7. **`src/evaluation/README_tool_evaluation.md`** — add one row to the
+7. **`docs/README_tool_evaluation.md`** — add one row to the
    adapter table (with the CLI id and a short description).
 
 8. **`tests/`** — add a small test.

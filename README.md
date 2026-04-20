@@ -92,9 +92,11 @@ The current evaluation pipeline includes adapters for:
 │       ├── __init__.py
 │       ├── evaluate.py
 │       ├── temporal_runner.py
-│       └── README_tool_evaluation.md
+│       └── ...
 ├── ground_truth_generation/
 ├── build_multi_ground_truth_dataset.py
+├── docs/
+│   └── README_tool_evaluation.md  # adapter details, metrics, FP heuristic reference
 ├── results/
 │   ├── paper/         # archived evaluation runs referenced by the paper
 │   ├── sbom/          # CycloneDX SBOM of the framework
@@ -127,7 +129,15 @@ cd sca-tool-evaluation
 poetry install
 ```
 
-### 3. Run commands inside the Poetry environment
+### 3. Configure `src` as source root
+
+The project source code lives under `src/`. When working in an IDE (e.g. PyCharm), mark the `src/` directory as **Sources Root** so that all modules under `evaluation/` and `ground_truth_generation/` are resolved correctly.
+
+In PyCharm: right-click the `src/` folder → *Mark Directory as* → *Sources Root*.
+
+For pytest, this is handled automatically via the `pythonpath = src` setting in `pyproject.toml`.
+
+### 4. Run commands inside the Poetry environment
 
 Either activate the environment:
 
@@ -140,6 +150,36 @@ or run commands directly via:
 ```bash
 poetry run <command>
 ```
+
+## Prerequisites for Full Evaluation
+
+Running all SCA tool adapters requires the following external tools and services to be set up:
+
+### Tool installation
+
+The following tools must be installed locally before their respective adapters can be used:
+
+| Tool | Installation |
+|---|---|
+| **Snyk CLI** | `npm install -g snyk` then `snyk auth` |
+| **Trivy** | https://aquasecurity.github.io/trivy/latest/getting-started/installation/ |
+
+### Dependency-Track instance
+
+If `dtrack` is part of `EVAL_TOOLS`, a running Dependency-Track instance is required:
+- Deploy Dependency-Track (e.g. via Docker: https://docs.dependencytrack.org/getting-started/deploy-docker/)
+- Create an API key under *Administration → Access Management → API Keys*
+- Set `DTRACK_URL` and `DTRACK_API_KEY` in your `.env` file
+
+### API credentials
+
+The following advisory sources require credentials or tokens:
+
+| Source | How to obtain |
+|---|---|
+| **GitHub Advisory Database** | Create a personal access token at https://github.com/settings/tokens (read-only scope is sufficient); set as `GITHUB_TOKEN` |
+| **OSS Index (Sonatype)** | Register at https://ossindex.sonatype.org, generate a user token under *Settings*; set `OSSINDEX_USERNAME` and `OSSINDEX_TOKEN` |
+| **OSV** | No authentication required; the public OSV API is used directly |
 
 ## Quick Start
 
@@ -514,7 +554,6 @@ Some adapters or helper workflows may use further variables, for example:
 |---|---|---|
 | `OSV_ROOT_PATH` | `/path/to/local/osv/vulnfeeds` | Local OSV mirror or feed root if used |
 | `SNYK_BIN` | `/usr/local/bin/snyk` | Path to the Snyk executable |
-| `SNYK_BASH_SCRIPT` | `${CODEBASE}/tools/evaluate_snyk.sh` | Optional helper script path for Snyk-based evaluation |
 
 ### Execution and experiment control
 
@@ -601,6 +640,26 @@ poetry run python -m evaluation.temporal_runner \
   --sbom ./artifacts/ground-truth/mixed_ground_truth_dataset.sbom.json \
   --output ./artifacts/temporal-run
 ```
+
+## Running the Full Experiment
+
+For a complete end-to-end experiment run (ground-truth generation + repeated evaluation + aggregation), use the provided shell script:
+
+```bash
+# 1. Set up a .env file at the project root (see "Minimal example .env" above)
+
+# 2. Run the experiment
+bash tools/run_experiment.sh
+```
+
+`run_experiment.sh` automates the full workflow:
+- Loads configuration from `.env`
+- Generates a fresh ground-truth dataset (or uses a fixed one if configured)
+- Prepares a Dependency-Track project and uploads the SBOM (if `dtrack` is in `EVAL_TOOLS`)
+- Runs repeated temporal evaluation across all configured tools
+- Aggregates results and exports comparison summaries, plots, and LaTeX tables
+
+The script requires the `.env` file to be present at the project root with at least `CODEBASE`, `EXPERIMENT_PATH`, `NUM_RUNS`, and `GITHUB_TOKEN` set. If `dtrack` is among the evaluated tools, `DTRACK_URL` and `DTRACK_API_KEY` are also required.
 
 ## Development
 

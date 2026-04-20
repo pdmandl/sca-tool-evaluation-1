@@ -2,12 +2,13 @@
 name = "sca-tool-evaluation"
 version = "0.1.0"
 description = "Evaluation framework for Software Composition Analysis (SCA) tools using OSV-based ground truth."
-readme = "README.md"
-license = { text = "Apache-2.0" }
 authors = [
     { name = "Peter Mandl", email = "peter.mandl@hm.edu" }
 ]
+license = { text = "Apache-2.0" }
+readme = "README.md"
 requires-python = ">=3.12,<4.0"
+
 keywords = [
     "software-composition-analysis",
     "sca",
@@ -17,8 +18,9 @@ keywords = [
     "ground-truth",
     "sbom",
     "cyclonedx",
-    "supply-chain-security",
+    "supply-chain-security"
 ]
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
@@ -28,7 +30,18 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Topic :: Security",
-    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Quality Assurance"
+]
+
+dependencies = [
+    "cyclonedx-python-lib>=11.7.0,<12.0.0",
+    "matplotlib>=3.10.8,<4.0.0",
+    "numpy>=2.4.4,<3.0.0",
+    "packaging>=26.1,<27.0",
+    "requests>=2.33.1,<3.0.0",
+    "scipy>=1.17.1,<2.0.0",
+    "semantic-version>=2.10.0,<3.0.0",
+    "tqdm>=4.67.3,<5.0.0"
 ]
 
 [project.urls]
@@ -36,34 +49,11 @@ Homepage = "https://github.com/prcmandl/sca-tool-evaluation"
 Repository = "https://github.com/prcmandl/sca-tool-evaluation"
 Issues = "https://github.com/prcmandl/sca-tool-evaluation/issues"
 
-
 [tool.poetry]
-name = "sca-tool-evaluation"
-version = "0.1.0"
-description = "Evaluation framework for Software Composition Analysis (SCA) tools using OSV-based ground truth."
-authors = ["Peter Mandl <peter.mandl@hm.edu>"]
-license = "Apache-2.0"
-readme = "README.md"
-repository = "https://github.com/prcmandl/sca-tool-evaluation"
 packages = [
-  { include = "evaluation", from = "src" },
-  { include = "ground_truth_generation", from = "src" }
+    { include = "evaluation", from = "src" },
+    { include = "ground_truth_generation", from = "src" }
 ]
-
-[tool.poetry.dependencies]
-python = ">=3.12,<4.0"
-cyclonedx-python-lib = "^11.7.0"
-matplotlib = "^3.10.8"
-numpy = "^2.4.4"
-packaging = "^26.1"
-requests = "^2.33.1"
-scipy = "^1.17.1"
-# Pinned to an exact version: upstream is effectively unmaintained
-# (last release 2022-05, last commit 2023-02). 2.10.0 is stable and
-# provides the NpmSpec range parser required by the GitHub Advisory
-# adapter. Revisit (e.g. migrate to `univers`) if issues arise.
-semantic-version = "2.10.0"
-tqdm = "^4.67.3"
 
 [tool.poetry.group.dev.dependencies]
 cyclonedx-bom = "^7.3.0"
@@ -75,13 +65,35 @@ ruff = "^0.8.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.coverage.run]
+# Record file paths relative to this config file (project root) so that
+# build/coverage/coverage.xml lists files as `src/evaluation/...` — the same
+# paths SonarQube indexes via `sonar.sources=src`. Without this flag coverage
+# emits absolute paths and Sonar silently drops the mapping.
+relative_files = true
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
-ignore = ["E501", "E402", "E741", "F401", "F403", "F405", "F811", "F841", "E731", "E722"]
+ignore = [
+    "E501",
+    "E402",
+    "E741",
+    "F401",
+    "F403",
+    "F405",
+    "F811",
+    "F841",
+    "E731",
+    "E722"
+]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

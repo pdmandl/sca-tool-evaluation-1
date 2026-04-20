@@ -114,21 +114,16 @@ build_ground_truth_snapshot() {
 gt_hash() {
   local gt_path="$1"
 
-  poetry run python "$GT_HASH_SCRIPT" "$gt_path"
+  poetry run python -m evaluation.core.gt_hash "$gt_path"
 }
 
 section "Loading environment"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-GT_HASH_SCRIPT="${PROJECT_ROOT}/tools/gt_hash.py"
+cd "$PROJECT_ROOT"
 AGGREGATE_EXPERIMENT_SCRIPT="${PROJECT_ROOT}/tools/aggregate_experiment.py"
 ENV_FILE="${PROJECT_ROOT}/.env"
-
-if [ ! -f "$GT_HASH_SCRIPT" ]; then
-  echo "ERROR: Missing helper script: $GT_HASH_SCRIPT"
-  exit 1
-fi
 
 if [ ! -f "$AGGREGATE_EXPERIMENT_SCRIPT" ]; then
   echo "ERROR: Missing helper script: $AGGREGATE_EXPERIMENT_SCRIPT"
@@ -298,22 +293,6 @@ for i in $(seq 1 "$NUM_RUNS"); do
     GT1_HASH="$(gt_hash "$GT1_PATH")"
 
     # Compare GT0 with GT1 and generate diff artifacts if they differ
-    GT_COMPARE_DIR="${RUN_DIR}/gt_comparison"
-    mkdir -p "$GT_COMPARE_DIR"
-
-    if poetry run python -m evaluation.orchestration.ground_truth_diff \
-      --gt0 "$GT0_PATH" \
-      --gt1 "$GT1_PATH" \
-      --output-dir "$GT_COMPARE_DIR" \
-      > "${GT_COMPARE_DIR}/gt_comparison_stdout.json"; then
-      log "GT comparison artifacts written to: $GT_COMPARE_DIR"
-    else
-      log "WARNING: GT comparison generation failed"
-    fi
-
-    # ------------------------------------------------------------
-    # ALWAYS perform GT comparison
-    # ------------------------------------------------------------
     GT_COMPARE_DIR="${RUN_DIR}/gt_comparison"
     mkdir -p "$GT_COMPARE_DIR"
 
