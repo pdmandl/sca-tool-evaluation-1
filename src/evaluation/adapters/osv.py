@@ -13,8 +13,8 @@ OSV_QUERY_URL = "https://api.osv.dev/v1/query"
 
 log = logging.getLogger("evaluation.adapters.osv")
 
-class OSVAdapter(VulnerabilityToolAdapter):
 
+class OSVAdapter(VulnerabilityToolAdapter):
     # ---------------------------------------------------------
     # Adapter capabilities
     # ---------------------------------------------------------

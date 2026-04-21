@@ -24,12 +24,13 @@ COLUMNS: List[Tuple[str, str]] = [
 # Public API
 # ------------------------------------------------------------------
 
+
 def write_tool_findings_txt(
     *,
     out_dir: Path,
     ground_truth_name: str,
     tool: str,
-    run_id: str, # run_id not used in path name
+    run_id: str,  # run_id not used in path name
     findings: List[Finding],
 ) -> Path:
     """
@@ -79,9 +80,7 @@ def write_tool_findings_txt(
         row_values = []
         for header, attr in COLUMNS:
             val = getattr(f, attr, None)
-            row_values.append(
-                (header, "-" if val in (None, "") else str(val))
-            )
+            row_values.append((header, "-" if val in (None, "") else str(val)))
 
         lines.append(_format_row(row_values, col_widths))
 
@@ -93,10 +92,11 @@ def write_tool_findings_txt(
         fp.write("\n")
 
     # Safety check: all table rows have equal length
-    table_lines = lines[lines.index(header_line):]
+    table_lines = lines[lines.index(header_line) :]
     first_len = len(table_lines[0])
-    assert all(len(l) == first_len for l in table_lines), \
-        "Misaligned table detected in tool findings TXT output"
+    assert all(
+        len(l) == first_len for l in table_lines
+    ), "Misaligned table detected in tool findings TXT output"
 
     return path
 
@@ -104,6 +104,7 @@ def write_tool_findings_txt(
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def _compute_column_widths(
     columns: List[Tuple[str, str]],

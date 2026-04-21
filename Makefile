@@ -27,7 +27,9 @@ CYCLO         ?= cyclonedx-py
 PYTEST        ?= pytest
 RUFF          ?= ruff
 COVERAGE      ?= coverage
+# Add path to local sonar scanner
 SONAR_SCANNER ?= sonar-scanner
+
 
 .PHONY: help install test coverage lint format sbom sonar clean check-tools check-sonarqube all
 
@@ -94,8 +96,35 @@ sbom: $(SBOM_DIR) ## Generate CycloneDX SBOM (JSON + XML) from poetry.lock
 	@$(POETRY) run $(CYCLO) poetry -o $(SBOM_XML)
 
 # ---------------------------------------------------------------------------
-# SonarQube (optional — configure via env vars)
-#   SONAR_URL=<https://sonar.example.com> SONAR_TOKEN=<token> make sonar
+# SonarQube (optional)
+#
+# Prerequisites:
+#   1. sonar-scanner CLI installed (default path: /usr/local/sonarscanner/bin/sonar-scanner)
+#        macOS:   brew install sonar-scanner
+#        manual:  https://docs.sonarsource.com/sonarqube-server/latest/analyzing-source-code/scanners/sonarscanner/
+#        Override the path with: SONAR_SCANNER=/path/to/sonar-scanner make sonar
+#
+#   2. sonar-project.properties present in the project root (already committed).
+#      It sets sonar.projectKey, sonar.sources=src, sonar.tests=tests,
+#      sonar.python.coverage.reportPaths=build/coverage/coverage.xml
+#
+#   3. A SonarQube server reachable at SONAR_URL (Community Edition or higher).
+#      Create a User Token in the SonarQube UI:
+#        My Account → Security → Generate Tokens → User Token → copy once
+#
+#   4. Coverage report must exist — run `make coverage` first.
+#      The XML report (build/coverage/coverage.xml, Cobertura format) is read
+#      by SonarQube to display line-level coverage. The pyproject.toml option
+#      `relative_files = true` ensures file paths match the `sonar.sources=src`
+#      layout so SonarQube maps them correctly.
+#
+#   5. SBOM (optional) — run `make sbom` first; if missing, scan continues
+#      without SBOM dependency data.
+#
+# Typical invocation:
+#   SONAR_URL=https://sonar.example.com \
+#   SONAR_TOKEN=squ_xxxxxxxxxxxxxxxxxxxx \
+#   make coverage sbom sonar
 # ---------------------------------------------------------------------------
 sonar: check-sonarqube ## Run SonarQube scanner (requires SONAR_URL, SONAR_TOKEN)
 	@if [ -z "$(SONAR_URL)" ] || [ -z "$(SONAR_TOKEN)" ]; then \

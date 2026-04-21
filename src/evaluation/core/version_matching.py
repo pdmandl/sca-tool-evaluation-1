@@ -11,8 +11,8 @@ from packaging.specifiers import SpecifierSet, InvalidSpecifier
 
 _V_PREFIX = re.compile(r"^\s*v", re.IGNORECASE)
 _WS = re.compile(r"\s+")
-_HYPHEN = re.compile(r"^\s*([^ ]+)\s*-\s*([^ ]+)\s*$")
-_MAVEN_RANGE = re.compile(r"^\s*([\[\(])\s*([^,]*)\s*,\s*([^)\]]*)\s*([\)\]])\s*$")
+_HYPHEN = re.compile(r"^([^ ]+)\s*-\s*([^ ]+)$")
+_MAVEN_RANGE = re.compile(r"^([\[\(])([^,]*),([^)\]]*)([\)\]])$")
 
 
 def _norm_version_token(x: str) -> str:
@@ -83,7 +83,7 @@ def normalize_specifier(spec: str) -> Optional[str]:
             # operators in SpecifierSet: ~=, ==, !=, <=, >=, <, >
             for op in ("~=", "==", "!=", "<=", ">=", "<", ">"):
                 if p.startswith(op):
-                    tok = _norm_version_token(p[len(op):])
+                    tok = _norm_version_token(p[len(op) :])
                     if not tok:
                         return None
                     out_parts.append(f"{op}{tok}")

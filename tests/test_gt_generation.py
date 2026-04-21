@@ -63,36 +63,69 @@ class TestValidation:
 class TestBalancing:
     def test_min_strategy(self):
         rows = [
-            {"ecosystem": "pypi", "component_name": "a",
-             "component_version": "1", "cve": "c1", "vulnerability_id": "v1"},
-            {"ecosystem": "pypi", "component_name": "a",
-             "component_version": "2", "cve": "c2", "vulnerability_id": "v2"},
-            {"ecosystem": "npm", "component_name": "b",
-             "component_version": "1", "cve": "c3", "vulnerability_id": "v3"},
+            {
+                "ecosystem": "pypi",
+                "component_name": "a",
+                "component_version": "1",
+                "cve": "c1",
+                "vulnerability_id": "v1",
+            },
+            {
+                "ecosystem": "pypi",
+                "component_name": "a",
+                "component_version": "2",
+                "cve": "c2",
+                "vulnerability_id": "v2",
+            },
+            {
+                "ecosystem": "npm",
+                "component_name": "b",
+                "component_version": "1",
+                "cve": "c3",
+                "vulnerability_id": "v3",
+            },
         ]
         balanced, stats = balance_rows_by_vulnerability_deterministic(
-            rows, ["pypi", "npm"], strategy="min",
+            rows,
+            ["pypi", "npm"],
+            strategy="min",
         )
         assert stats["pypi"]["kept_rows"] == 1
         assert stats["npm"]["kept_rows"] == 1
 
     def test_median_strategy(self):
         rows = [
-            {"ecosystem": "pypi", "component_name": "a",
-             "component_version": "1", "cve": "c1", "vulnerability_id": "v1"},
-            {"ecosystem": "pypi", "component_name": "a",
-             "component_version": "2", "cve": "c2", "vulnerability_id": "v2"},
-            {"ecosystem": "npm", "component_name": "b",
-             "component_version": "1", "cve": "c3", "vulnerability_id": "v3"},
+            {
+                "ecosystem": "pypi",
+                "component_name": "a",
+                "component_version": "1",
+                "cve": "c1",
+                "vulnerability_id": "v1",
+            },
+            {
+                "ecosystem": "pypi",
+                "component_name": "a",
+                "component_version": "2",
+                "cve": "c2",
+                "vulnerability_id": "v2",
+            },
+            {
+                "ecosystem": "npm",
+                "component_name": "b",
+                "component_version": "1",
+                "cve": "c3",
+                "vulnerability_id": "v3",
+            },
         ]
         balanced, stats = balance_rows_by_vulnerability_deterministic(
-            rows, ["pypi", "npm"], strategy="median",
+            rows,
+            ["pypi", "npm"],
+            strategy="median",
         )
         assert stats["pypi"]["target"] == stats["npm"]["target"]
 
     def test_invalid_strategy_raises(self):
-        rows = [{"ecosystem": "pypi", "component_name": "a",
-                 "component_version": "1"}]
+        rows = [{"ecosystem": "pypi", "component_name": "a", "component_version": "1"}]
         try:
             balance_rows_by_vulnerability_deterministic(rows, ["pypi"], "invalid")
         except ValueError:
@@ -145,22 +178,57 @@ class TestOSVCommon:
         assert version_is_affected(v, "1.0.1") is False
 
     def test_version_is_affected_range(self):
-        v = {"affected": [{"ranges": [{"type": "SEMVER", "events": [
-            {"introduced": "1.0.0"}, {"fixed": "2.0.0"},
-        ]}]}]}
+        v = {
+            "affected": [
+                {
+                    "ranges": [
+                        {
+                            "type": "SEMVER",
+                            "events": [
+                                {"introduced": "1.0.0"},
+                                {"fixed": "2.0.0"},
+                            ],
+                        }
+                    ]
+                }
+            ]
+        }
         assert version_is_affected(v, "1.5.0") is True
         assert version_is_affected(v, "2.0.0") is False
 
     def test_version_is_affected_introduced_zero(self):
-        v = {"affected": [{"ranges": [{"type": "SEMVER", "events": [
-            {"introduced": "0"}, {"fixed": "1.0.0"},
-        ]}]}]}
+        v = {
+            "affected": [
+                {
+                    "ranges": [
+                        {
+                            "type": "SEMVER",
+                            "events": [
+                                {"introduced": "0"},
+                                {"fixed": "1.0.0"},
+                            ],
+                        }
+                    ]
+                }
+            ]
+        }
         assert version_is_affected(v, "0.5.0") is True
 
     def test_version_is_affected_open_ended(self):
-        v = {"affected": [{"ranges": [{"type": "SEMVER", "events": [
-            {"introduced": "1.0.0"},
-        ]}]}]}
+        v = {
+            "affected": [
+                {
+                    "ranges": [
+                        {
+                            "type": "SEMVER",
+                            "events": [
+                                {"introduced": "1.0.0"},
+                            ],
+                        }
+                    ]
+                }
+            ]
+        }
         assert version_is_affected(v, "2.0.0") is True
 
     def test_version_is_affected_invalid(self):
@@ -172,10 +240,8 @@ class TestOSVCommon:
         p = datetime(2024, 6, 1, tzinfo=timezone.utc)
         assert within_date_window(p, s, e) is True
         assert within_date_window(None, s, e) is False
-        assert within_date_window(
-            datetime(2023, 1, 1, tzinfo=timezone.utc), s, e) is False
-        assert within_date_window(
-            datetime(2025, 1, 1, tzinfo=timezone.utc), s, e) is False
+        assert within_date_window(datetime(2023, 1, 1, tzinfo=timezone.utc), s, e) is False
+        assert within_date_window(datetime(2025, 1, 1, tzinfo=timezone.utc), s, e) is False
         assert within_date_window(p, None, None) is True
 
     def test_parse_iso_date(self):
@@ -245,6 +311,7 @@ class TestOSVCommon:
     def test_request_json_with_retry_invalid_json(self, mock_get):
         def _raise():
             raise ValueError("nope")
+
         mock_get.return_value = MagicMock(
             status_code=200,
             json=_raise,

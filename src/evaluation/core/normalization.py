@@ -16,6 +16,7 @@ from __future__ import annotations
 # Component normalization
 # ------------------------------------------------------------
 
+
 def normalize_component(ecosystem: str, name: str) -> str:
     """
     Normalize component names across ecosystems.
@@ -78,10 +79,10 @@ def normalize_component(ecosystem: str, name: str) -> str:
     return n
 
 
-
 # ------------------------------------------------------------
 # Vulnerability identifier normalization
 # ------------------------------------------------------------
+
 
 def normalize_identifier(vuln_id: str | None) -> str | None:
     """
@@ -107,6 +108,7 @@ def normalize_identifier(vuln_id: str | None) -> str | None:
 # ------------------------------------------------------------
 # Version normalization (string-safe)
 # ------------------------------------------------------------
+
 
 def normalize_version(version: str | None) -> str:
     """
@@ -135,4 +137,3 @@ def ecosystem_from_purl(purl: str) -> str | None:
         return purl.split(":", 1)[1].split("/", 1)[0]
     except Exception:
         return None
-

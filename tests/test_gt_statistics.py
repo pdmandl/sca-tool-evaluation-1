@@ -65,11 +65,17 @@ def test_write_statistics(tmp_path: Path, monkeypatch):
         _row(component_version="3.2.1", vulnerability_id="OSV-2"),
         _row(component_name="numpy", vulnerability_id="OSV-3", cve=None),
         _row(ecosystem="npm", component_name="lodash", vulnerability_id="OSV-4"),
-        _row(ecosystem="npm", component_name="lodash",
-             component_version="4.17.11", vulnerability_id="OSV-5"),
+        _row(
+            ecosystem="npm",
+            component_name="lodash",
+            component_version="4.17.11",
+            vulnerability_id="OSV-5",
+        ),
     ]
-    csv_path = tmp_path / "gt.csv"; csv_path.write_text("")
-    sbom_path = tmp_path / "gt.sbom.json"; sbom_path.write_text("{}")
+    csv_path = tmp_path / "gt.csv"
+    csv_path.write_text("")
+    sbom_path = tmp_path / "gt.sbom.json"
+    sbom_path.write_text("{}")
     out_path = tmp_path / "gt.stat.txt"
 
     write_statistics(

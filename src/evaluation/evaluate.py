@@ -7,6 +7,7 @@ loads the ground truth, initializes the requested adapter, normalizes the tool
 findings, computes TP/FP/FN-based metrics, and emits report artifacts for later
 inspection and publication.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -54,6 +55,7 @@ log = logging.getLogger("evaluation")
 # Progress bar
 # ------------------------------------------------------------
 
+
 def iter_with_progress(items, *, desc: str, unit: str):
     """
     Yield items with an optional tqdm progress bar.
@@ -64,9 +66,7 @@ def iter_with_progress(items, *, desc: str, unit: str):
     import sys
     from tqdm import tqdm
 
-    enabled = os.environ.get("EVAL_PROGRESS", "1").lower() not in {
-        "0", "false", "no", "off"
-    }
+    enabled = os.environ.get("EVAL_PROGRESS", "1").lower() not in {"0", "false", "no", "off"}
 
     if not enabled or not sys.stderr.isatty():
         for x in items:
@@ -86,6 +86,7 @@ def iter_with_progress(items, *, desc: str, unit: str):
 # ------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------
+
 
 def _get_identifier(x: Finding) -> str:
     """
@@ -184,15 +185,8 @@ def _compute_gt_summary(ground_truth: List[Finding]) -> Dict[str, Dict[str, int]
     for eco in ecosystems:
         gt_subset = [g for g in ground_truth if g.ecosystem == eco]
 
-        components = {
-            (g.component, g.version)
-            for g in gt_subset
-        }
-        cves = {
-            g.cve
-            for g in gt_subset
-            if g.cve
-        }
+        components = {(g.component, g.version) for g in gt_subset}
+        cves = {g.cve for g in gt_subset if g.cve}
 
         result[eco] = {
             "Components": len(components),
@@ -268,6 +262,7 @@ def _init_adapter(tool: str, config: dict):
 # ------------------------------------------------------------
 # Reusable evaluation entry point
 # ------------------------------------------------------------
+
 
 def run_evaluation(
     *,
@@ -484,6 +479,7 @@ def run_evaluation(
 # ------------------------------------------------------------
 # Main
 # ------------------------------------------------------------
+
 
 def main() -> None:
     """

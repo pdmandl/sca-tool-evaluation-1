@@ -156,7 +156,8 @@ class OSSIndexAdapter(VulnerabilityToolAdapter):
     ) -> List[Finding]:
         all_findings = self.load_findings()
         return [
-            f for f in all_findings
+            f
+            for f in all_findings
             if f.ecosystem == ecosystem and f.component == component and f.version == version
         ]
 
@@ -220,9 +221,7 @@ class OSSIndexAdapter(VulnerabilityToolAdapter):
                 continue
 
             coord = str(
-                comp_report.get("coordinates")
-                or comp_report.get("coordinate")
-                or ""
+                comp_report.get("coordinates") or comp_report.get("coordinate") or ""
             ).strip()
 
             key = coord_map.get(coord) or self._best_effort_key_from_purl(coord)
@@ -411,9 +410,11 @@ class OSSIndexAdapter(VulnerabilityToolAdapter):
     # ------------------------------------------------------------
 
     def _chunks(self, xs: List[str], n: int) -> List[List[str]]:
-        return [xs[i:i + n] for i in range(0, len(xs), n)]
+        return [xs[i : i + n] for i in range(0, len(xs), n)]
 
-    def _sleep_backoff(self, attempt: int, honor_retry_after: Optional[requests.Response] = None) -> None:
+    def _sleep_backoff(
+        self, attempt: int, honor_retry_after: Optional[requests.Response] = None
+    ) -> None:
         if honor_retry_after is not None:
             ra = honor_retry_after.headers.get("Retry-After")
             if ra:

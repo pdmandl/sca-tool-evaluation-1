@@ -10,6 +10,7 @@ from evaluation.core.normalization import (
     normalize_version,
 )
 
+
 def load_ground_truth(path: Path) -> List[Finding]:
     rows: List[Finding] = []
 

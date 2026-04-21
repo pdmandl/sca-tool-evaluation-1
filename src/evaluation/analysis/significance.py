@@ -10,8 +10,9 @@ from scipy.stats import binomtest, chi2
 # Detection Matrix
 # =========================
 
+
 def build_detection_matrix_from_vectors(
-    detection_vectors_by_tool: Dict[str, List[int]]
+    detection_vectors_by_tool: Dict[str, List[int]],
 ) -> Tuple[np.ndarray, List[str]]:
     tools = sorted(detection_vectors_by_tool.keys())
 
@@ -27,16 +28,14 @@ def build_detection_matrix_from_vectors(
 # Cochran's Q Test
 # =========================
 
+
 def cochran_q_test(matrix: np.ndarray) -> Tuple[float, float]:
     k = matrix.shape[1]
-    n = matrix.shape[0]
 
     row_sums = matrix.sum(axis=1)
     col_sums = matrix.sum(axis=0)
 
-    numerator = (k - 1) * (
-        k * (col_sums**2).sum() - (col_sums.sum() ** 2)
-    )
+    numerator = (k - 1) * (k * (col_sums**2).sum() - (col_sums.sum() ** 2))
     denominator = k * row_sums.sum() - (row_sums**2).sum()
 
     if denominator == 0:
@@ -51,6 +50,7 @@ def cochran_q_test(matrix: np.ndarray) -> Tuple[float, float]:
 # =========================
 # Pairwise McNemar
 # =========================
+
 
 def pairwise_mcnemar_from_matrix(matrix: np.ndarray, tools: List[str]):
     rows = []
@@ -75,14 +75,16 @@ def pairwise_mcnemar_from_matrix(matrix: np.ndarray, tools: List[str]):
                 ).pvalue
             )
 
-        rows.append({
-            "tool_a": tools[i],
-            "tool_b": tools[j],
-            "n10": n10,
-            "n01": n01,
-            "p": p,
-            "p_adj": None,
-        })
+        rows.append(
+            {
+                "tool_a": tools[i],
+                "tool_b": tools[j],
+                "n10": n10,
+                "n01": n01,
+                "p": p,
+                "p_adj": None,
+            }
+        )
 
     return rows
 
@@ -90,6 +92,7 @@ def pairwise_mcnemar_from_matrix(matrix: np.ndarray, tools: List[str]):
 # =========================
 # Holm correction
 # =========================
+
 
 def holm(rows):
     rows_sorted = sorted(rows, key=lambda x: x["p"])
@@ -104,6 +107,7 @@ def holm(rows):
 # =========================
 # LaTeX output
 # =========================
+
 
 def write_significance_latex(q, p_q, rows, output_path):
     with open(output_path, "w", encoding="utf-8") as f:

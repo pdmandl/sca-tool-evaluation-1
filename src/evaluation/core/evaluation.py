@@ -52,8 +52,6 @@ def evaluate_project_centric(
     return tp_exact, tp_range, fp, fn
 
 
-
-
 def classify_false_negatives(
     *,
     false_negatives: List[Finding],
@@ -128,6 +126,7 @@ from packaging.version import Version, InvalidVersion
 
 from packaging.version import Version, InvalidVersion
 
+
 def version_in_range(version: str, range_expr: str) -> bool:
     """
     Conservative range evaluation.
@@ -161,9 +160,8 @@ def version_in_range(version: str, range_expr: str) -> bool:
             elif p.startswith(">"):
                 if v <= Version(p[1:].strip()):
                     return False
-            elif p.startswith("=="):
-                if v != Version(p[2:].strip()):
-                    return False
+            elif p.startswith("==") and v != Version(p[2:].strip()):
+                return False
         except InvalidVersion:
             # Range boundary not safely comparable → undecidable → no TP_RANGE
             return False

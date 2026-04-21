@@ -15,6 +15,9 @@ from evaluation.core.normalization import normalize_identifier
 
 log = logging.getLogger("evaluation.adapters.snyk")
 
+_ATTEMPT_LOG_FMT = "%s (attempt %d/%d)"
+_STDERR_LOG_FMT = "STDERR:\n%s"
+
 
 class SnykAdapter(VulnerabilityToolAdapter):
     """
@@ -38,45 +41,24 @@ class SnykAdapter(VulnerabilityToolAdapter):
         env = config.get("env", {})
         self.enabled = True
 
-        self.snyk_bin = (
-            env.get("SNYK_BIN")
-            or os.environ.get("SNYK_BIN")
-            or "/usr/local/bin/snyk"
-        )
+        self.snyk_bin = env.get("SNYK_BIN") or os.environ.get("SNYK_BIN") or "/usr/local/bin/snyk"
 
-        self.sbom_file = (
-            env.get("SNYK_SBOM_FILE")
-            or os.environ.get("SNYK_SBOM_FILE")
-        )
+        self.sbom_file = env.get("SNYK_SBOM_FILE") or os.environ.get("SNYK_SBOM_FILE")
 
-        self.bash_path = (
-            env.get("BASH_PATH")
-            or os.environ.get("BASH_PATH")
-            or "/bin/bash"
-        )
+        self.bash_path = env.get("BASH_PATH") or os.environ.get("BASH_PATH") or "/bin/bash"
 
-        self.bash_script = (
-            env.get("SNYK_BASH_SCRIPT")
-            or os.environ.get("SNYK_BASH_SCRIPT")
-            or ""
-        )
+        self.bash_script = env.get("SNYK_BASH_SCRIPT") or os.environ.get("SNYK_BASH_SCRIPT") or ""
 
         self.max_attempts = int(
-            env.get("SNYK_CLI_MAX_ATTEMPTS")
-            or os.environ.get("SNYK_CLI_MAX_ATTEMPTS")
-            or "3"
+            env.get("SNYK_CLI_MAX_ATTEMPTS") or os.environ.get("SNYK_CLI_MAX_ATTEMPTS") or "3"
         )
 
         self.retry_sleep = float(
-            env.get("SNYK_CLI_RETRY_SLEEP")
-            or os.environ.get("SNYK_CLI_RETRY_SLEEP")
-            or "2"
+            env.get("SNYK_CLI_RETRY_SLEEP") or os.environ.get("SNYK_CLI_RETRY_SLEEP") or "2"
         )
 
         self.timeout_seconds = int(
-            env.get("SNYK_CLI_TIMEOUT")
-            or os.environ.get("SNYK_CLI_TIMEOUT")
-            or "180"
+            env.get("SNYK_CLI_TIMEOUT") or os.environ.get("SNYK_CLI_TIMEOUT") or "180"
         )
 
         # ------------------------------------------------------------
@@ -181,9 +163,9 @@ class SnykAdapter(VulnerabilityToolAdapter):
                 )
 
                 last_error = f"Snyk CLI timed out after {self.timeout_seconds}s"
-                log.error("%s (attempt %d/%d)", last_error, attempt, self.max_attempts)
+                log.error(_ATTEMPT_LOG_FMT, last_error, attempt, self.max_attempts)
                 if stderr:
-                    log.error("STDERR:\n%s", stderr)
+                    log.error(_STDERR_LOG_FMT, stderr)
 
                 if attempt < self.max_attempts:
                     time.sleep(self.retry_sleep * attempt)
@@ -193,7 +175,7 @@ class SnykAdapter(VulnerabilityToolAdapter):
 
             except Exception as e:
                 last_error = f"Failed to execute Snyk Bash script: {e}"
-                log.error("%s (attempt %d/%d)", last_error, attempt, self.max_attempts)
+                log.error(_ATTEMPT_LOG_FMT, last_error, attempt, self.max_attempts)
 
                 if attempt < self.max_attempts:
                     time.sleep(self.retry_sleep * attempt)
@@ -214,9 +196,9 @@ class SnykAdapter(VulnerabilityToolAdapter):
 
             if p.returncode != 0:
                 last_error = f"Snyk CLI returned non-zero exit code: {p.returncode}"
-                log.error("%s (attempt %d/%d)", last_error, attempt, self.max_attempts)
+                log.error(_ATTEMPT_LOG_FMT, last_error, attempt, self.max_attempts)
                 if stderr:
-                    log.error("STDERR:\n%s", stderr)
+                    log.error(_STDERR_LOG_FMT, stderr)
 
                 if attempt < self.max_attempts:
                     time.sleep(self.retry_sleep * attempt)
@@ -226,9 +208,9 @@ class SnykAdapter(VulnerabilityToolAdapter):
 
             if not stdout:
                 last_error = "Snyk returned empty stdout"
-                log.error("%s (attempt %d/%d)", last_error, attempt, self.max_attempts)
+                log.error(_ATTEMPT_LOG_FMT, last_error, attempt, self.max_attempts)
                 if stderr:
-                    log.error("STDERR:\n%s", stderr)
+                    log.error(_STDERR_LOG_FMT, stderr)
 
                 if attempt < self.max_attempts:
                     time.sleep(self.retry_sleep * attempt)
@@ -240,7 +222,7 @@ class SnykAdapter(VulnerabilityToolAdapter):
                 data = json.loads(stdout)
             except Exception as e:
                 last_error = f"Invalid JSON from Snyk (first 500 chars): {stdout[:500]!r}"
-                log.error("%s (attempt %d/%d)", last_error, attempt, self.max_attempts)
+                log.error(_ATTEMPT_LOG_FMT, last_error, attempt, self.max_attempts)
 
                 if attempt < self.max_attempts:
                     time.sleep(self.retry_sleep * attempt)
@@ -251,7 +233,7 @@ class SnykAdapter(VulnerabilityToolAdapter):
             vulns = data.get("vulnerabilities")
             if not isinstance(vulns, list):
                 last_error = "Snyk output has no valid 'vulnerabilities' list"
-                log.error("%s (attempt %d/%d)", last_error, attempt, self.max_attempts)
+                log.error(_ATTEMPT_LOG_FMT, last_error, attempt, self.max_attempts)
 
                 if attempt < self.max_attempts:
                     time.sleep(self.retry_sleep * attempt)

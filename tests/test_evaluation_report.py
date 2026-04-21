@@ -1,4 +1,5 @@
 """Tests for evaluation_report.write_report and helper functions."""
+
 from pathlib import Path
 
 from evaluation.core.model import Finding
@@ -6,8 +7,9 @@ from evaluation.reporting.evaluation_report import write_report
 
 
 def _f(**kw):
-    base = dict(ecosystem="pypi", component="django", version="3.2.0",
-                cve="CVE-2024-1", osv_id="OSV-1")
+    base = dict(
+        ecosystem="pypi", component="django", version="3.2.0", cve="CVE-2024-1", osv_id="OSV-1"
+    )
     base.update(kw)
     return Finding(**base)
 
@@ -21,15 +23,17 @@ def _make_gt():
 
 
 class TestWriteReport:
-
     def _call(self, tmp_path, **kw):
         csv = tmp_path / "gt.csv"
         csv.write_text("")
         defaults = dict(
             tool_name="osv",
             input_csv=str(csv),
-            tp=[], fp=[], fn=[],
-            fp_stats={}, fn_stats={},
+            tp=[],
+            fp=[],
+            fn=[],
+            fp_stats={},
+            fn_stats={},
             ground_truth=_make_gt(),
             api_stats=None,
         )
@@ -73,8 +77,9 @@ class TestWriteReport:
 
     def test_with_fp(self, tmp_path):
         fp = [_f(component="x", version="9.0", fp_class="FP-CERTAIN", fp_reason="test")]
-        out = self._call(tmp_path, fp=fp,
-                         fp_stats={"FP-CERTAIN": 1, "FP-LIKELY": 0, "FP-UNCLEAR": 0})
+        out = self._call(
+            tmp_path, fp=fp, fp_stats={"FP-CERTAIN": 1, "FP-LIKELY": 0, "FP-UNCLEAR": 0}
+        )
         text = out.read_text()
         assert "FP-CERTAIN" in text
         assert "False Positives" in text
@@ -101,8 +106,13 @@ class TestWriteReport:
         fn_stats = {"FN_exact": [], "FN_range": [], "FN_true": fn}
         fp_stats = {"FP-CERTAIN": 0, "FP-LIKELY": 1, "FP-UNCLEAR": 0}
         out = self._call(
-            tmp_path, tp=tp, fp=fp, fn=fn,
-            fn_stats=fn_stats, fp_stats=fp_stats, ground_truth=gt,
+            tmp_path,
+            tp=tp,
+            fp=fp,
+            fn=fn,
+            fn_stats=fn_stats,
+            fp_stats=fp_stats,
+            ground_truth=gt,
         )
         text = out.read_text()
         assert "End of report" in text
@@ -117,8 +127,11 @@ class TestWriteReport:
         write_report(
             tool_name="trivy",
             input_csv=str(csv),
-            tp=None, fp=None, fn=None,
-            fp_stats=None, fn_stats=None,
+            tp=None,
+            fp=None,
+            fn=None,
+            fp_stats=None,
+            fn_stats=None,
             ground_truth=None,
         )
         assert len(list(tmp_path.glob("*_evaluation.txt"))) == 1

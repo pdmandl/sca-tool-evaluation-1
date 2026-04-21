@@ -14,9 +14,7 @@ def compute_balance_validation(rows):
 
     for eco, eco_rows in by_eco.items():
         comp_counter = Counter(r["component_name"] for r in eco_rows)
-        comp_ver_counter = Counter(
-            (r["component_name"], r["component_version"]) for r in eco_rows
-        )
+        comp_ver_counter = Counter((r["component_name"], r["component_version"]) for r in eco_rows)
 
         total = len(eco_rows)
         comp_counts = sorted(comp_counter.values(), reverse=True)

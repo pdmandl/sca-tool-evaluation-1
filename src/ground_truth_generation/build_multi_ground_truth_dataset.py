@@ -15,6 +15,7 @@ Configuration is intentionally environment-driven so that experiments can be
 reproduced in CI and archived together with the exact parameterization used for
 the dataset build.
 """
+
 import json
 import logging
 import os
@@ -85,6 +86,7 @@ _vuln_detail_cache = {}
 # Helpers
 # ------------------------------------------------------------
 
+
 def compute_global_counts(all_rows):
     # unique components := (ecosystem, component_name, component_version)
     """
@@ -94,8 +96,7 @@ def compute_global_counts(all_rows):
     level, whereas vulnerability entries correspond to canonicalized OSV-backed rows.
     """
     unique_components = {
-        (r["ecosystem"], r["component_name"], r["component_version"])
-        for r in all_rows
+        (r["ecosystem"], r["component_name"], r["component_version"]) for r in all_rows
     }
     component_count = len(unique_components)
 
@@ -103,6 +104,7 @@ def compute_global_counts(all_rows):
     osv_vuln_entries = len(all_rows)
 
     return component_count, osv_vuln_entries
+
 
 def normalize_description(text: str) -> str:
     """
@@ -140,9 +142,7 @@ def get_vulnerability_description(vuln_id: str) -> str:
     2) first sentence of details
     """
     if vuln_id not in _vuln_detail_cache:
-        _vuln_detail_cache[vuln_id] = request_json(
-            OSV_VULN_URL.format(vuln_id=vuln_id)
-        )
+        _vuln_detail_cache[vuln_id] = request_json(OSV_VULN_URL.format(vuln_id=vuln_id))
 
     v = _vuln_detail_cache[vuln_id]
 
@@ -159,10 +159,12 @@ def compute_pre_balance_stats(rows):
     """
     Compute raw per-ecosystem counts before post-hoc balancing.
     """
-    stats = defaultdict(lambda: {
-        "rows": 0,
-        "components": set(),
-    })
+    stats = defaultdict(
+        lambda: {
+            "rows": 0,
+            "components": set(),
+        }
+    )
 
     for r in rows:
         eco = (r.get("ecosystem") or "").strip().lower()
@@ -182,7 +184,6 @@ def compute_pre_balance_stats(rows):
     return stats
 
 
-
 def utc_ts() -> str:
     """
     Return a compact UTC timestamp suitable for file names.
@@ -194,10 +195,7 @@ def count_samples(rows):
     """
     Count unique sampled component-version observations in a row set.
     """
-    return len({
-        (r["ecosystem"], r["component_name"], r["component_version"])
-        for r in rows
-    })
+    return len({(r["ecosystem"], r["component_name"], r["component_version"]) for r in rows})
 
 
 def sanitize_description(text: str, max_len: int = 240) -> str:
@@ -211,18 +209,14 @@ def sanitize_description(text: str, max_len: int = 240) -> str:
     if not text:
         return ""
 
-    cleaned = (
-        str(text)
-        .replace("\r", " ")
-        .replace("\n", " ")
-        .replace("\t", " ")
-    )
+    cleaned = str(text).replace("\r", " ").replace("\n", " ").replace("\t", " ")
     cleaned = " ".join(cleaned.split())
 
     if len(cleaned) > max_len:
         cleaned = cleaned[: max_len - 1].rstrip() + "…"
 
     return cleaned
+
 
 def _stable_row_key(r):
     """
@@ -235,6 +229,7 @@ def _stable_row_key(r):
         (r.get("vulnerability_id") or "").strip().lower(),
         (r.get("cve") or "").strip().lower(),
     )
+
 
 def _component_key(r):
     """
@@ -261,6 +256,7 @@ def _stable_row_key(r):
         (r.get("cve") or "").strip().lower(),
     )
 
+
 def _component_key(r):
     """
     Build a canonical component-version key for one dataset row.
@@ -270,64 +266,68 @@ def _component_key(r):
         str(r.get("component_version") or "").strip(),
     )
 
+
 # --------------------------------------------------------
 # Validate & enrich against OSV (HARD)
 # --------------------------------------------------------
 
+
 def verify_dataset_against_osv(rows, osv_cache):
-        """
-        Validate every final row against the cached OSV query responses.
+    """
+    Validate every final row against the cached OSV query responses.
 
-        The function performs a strict offline verification pass. Rows that cannot be
-        justified by the cached OSV responses are treated as hard errors rather than
-        silently retained.
-        """
-        log.info("=== verifying dataset against OSV (OFFLINE, CACHED) ===")
+    The function performs a strict offline verification pass. Rows that cannot be
+    justified by the cached OSV responses are treated as hard errors rather than
+    silently retained.
+    """
+    log.info("=== verifying dataset against OSV (OFFLINE, CACHED) ===")
 
-        validated = []
-        errors = 0
+    validated = []
+    errors = 0
 
-        for idx, r in enumerate(rows, 1):
-            eco = r["ecosystem"]
-            comp = r["component_name"]
-            ver = r["component_version"]
-            vuln_id = r["vulnerability_id"]
+    for idx, r in enumerate(rows, 1):
+        eco = r["ecosystem"]
+        comp = r["component_name"]
+        ver = r["component_version"]
+        vuln_id = r["vulnerability_id"]
 
-            cache_key = (eco, comp, ver)
-            res = osv_cache.get(cache_key)
+        cache_key = (eco, comp, ver)
+        res = osv_cache.get(cache_key)
 
-            if res is None:
-                raise RuntimeError(
-                    f"Missing OSV cache entry for {cache_key}"
-                )
+        if res is None:
+            raise RuntimeError(f"Missing OSV cache entry for {cache_key}")
 
-            osv_ids = {v["id"] for v in res.get("vulns", [])}
+        osv_ids = {v["id"] for v in res.get("vulns", [])}
 
-            if vuln_id not in osv_ids:
-                errors += 1
-                log.error(
-                    "[%d] INVALID ENTRY | ecosystem=%s | component=%s | version=%s | vuln_id=%s",
-                    idx, eco, comp, ver, vuln_id,
-                )
-                continue
-
-            validated.append(r)
-
-        if errors > 0:
-            raise RuntimeError(
-                f"Ground truth validation failed: {errors} invalid entries detected"
+        if vuln_id not in osv_ids:
+            errors += 1
+            log.error(
+                "[%d] INVALID ENTRY | ecosystem=%s | component=%s | version=%s | vuln_id=%s",
+                idx,
+                eco,
+                comp,
+                ver,
+                vuln_id,
             )
+            continue
 
-        log.info(
-            "validation successful | rows=%d",
-            len(validated),
-        )
+        validated.append(r)
 
-        return validated
+    if errors > 0:
+        raise RuntimeError(f"Ground truth validation failed: {errors} invalid entries detected")
+
+    log.info(
+        "validation successful | rows=%d",
+        len(validated),
+    )
+
+    return validated
+
 
 # ------------------------------------------------------------
 # SBOM generation and validation
 # ------------------------------------------------------------
+
 
 def validate_cyclonedx_sbom(bom: dict) -> None:
     """
@@ -367,10 +367,6 @@ def validate_cyclonedx_sbom(bom: dict) -> None:
             exc_info=e,
         )
         raise
-
-
-
-
 
 
 def build_sbom(
@@ -447,15 +443,19 @@ def build_sbom(
         if ecosystem == "maven":
             hashes = []
             if r.get("hash_sha1"):
-                hashes.append({
-                    "alg": "SHA-1",
-                    "content": r["hash_sha1"],
-                })
+                hashes.append(
+                    {
+                        "alg": "SHA-1",
+                        "content": r["hash_sha1"],
+                    }
+                )
             if r.get("hash_sha256"):
-                hashes.append({
-                    "alg": "SHA-256",
-                    "content": r["hash_sha256"],
-                })
+                hashes.append(
+                    {
+                        "alg": "SHA-256",
+                        "content": r["hash_sha256"],
+                    }
+                )
             if hashes:
                 comp["hashes"] = hashes
 
@@ -467,10 +467,12 @@ def build_sbom(
         bom_components.append(comp)
 
         # Minimal but valid dependency graph
-        dependencies.append({
-            "ref": purl,
-            "dependsOn": [],
-        })
+        dependencies.append(
+            {
+                "ref": purl,
+                "dependsOn": [],
+            }
+        )
 
     # ------------------------------------------------------------
     # Step 3: Assemble SBOM
@@ -514,17 +516,16 @@ def build_sbom(
     return out_path
 
 
-
-
-
 def compute_ecosystem_stats(rows):
     """
     Compute per-ecosystem component and vulnerability totals.
     """
-    stats = defaultdict(lambda: {
-        "components": set(),
-        "vulnerabilities": 0,
-    })
+    stats = defaultdict(
+        lambda: {
+            "components": set(),
+            "vulnerabilities": 0,
+        }
+    )
 
     for r in rows:
         eco = (r.get("ecosystem") or "").strip().lower()
@@ -541,10 +542,10 @@ def compute_ecosystem_stats(rows):
 
 
 def write_ground_truth_meta(
-        *,
-        output_csv_path,
-        ecosystem_stats,
-        total_vulnerabilities: int,
+    *,
+    output_csv_path,
+    ecosystem_stats,
+    total_vulnerabilities: int,
 ) -> None:
     """
     Write a machine-readable metadata sidecar next to the CSV dataset.
@@ -561,18 +562,13 @@ def write_ground_truth_meta(
             "start_date": start_date,
             "end_date": end_date,
         },
-
         "osv_snapshot_note": (
             "Ground truth is time-fixed and constrained to the given time window. "
             "OSV vulnerabilities published outside this window or added after "
             "dataset creation are not part of the ground truth."
         ),
-
-        "components_total": sum(
-            len(v["components"]) for v in ecosystem_stats.values()
-        ),
+        "components_total": sum(len(v["components"]) for v in ecosystem_stats.values()),
         "vulnerabilities_total": total_vulnerabilities,
-
         "ecosystem_breakdown": {
             eco: {
                 "components": len(data["components"]),
@@ -586,6 +582,7 @@ def write_ground_truth_meta(
 
     with meta_path.open("w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, sort_keys=True)
+
 
 def balance_rows_by_vulnerability_deterministic(
     rows,
@@ -656,13 +653,15 @@ def balance_rows_by_vulnerability_deterministic(
                 ),
             )
 
-            ordered_groups.append((
-                len(items_sorted),
-                comp_counter[comp],
-                (comp or "").lower(),
-                str(ver),
-                deque(items_sorted),
-            ))
+            ordered_groups.append(
+                (
+                    len(items_sorted),
+                    comp_counter[comp],
+                    (comp or "").lower(),
+                    str(ver),
+                    deque(items_sorted),
+                )
+            )
 
         ordered_groups.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
 
@@ -691,12 +690,13 @@ def balance_rows_by_vulnerability_deterministic(
             "kept_rows": len(selected),
             "target": target,
             "unique_components": len({r["component_name"] for r in selected}),
-            "unique_component_versions": len({
-                (r["component_name"], r["component_version"]) for r in selected
-            }),
+            "unique_component_versions": len(
+                {(r["component_name"], r["component_version"]) for r in selected}
+            ),
         }
 
     return balanced, stats
+
 
 def cap_per_component(rows, max_per_component=10):
     """
@@ -716,6 +716,7 @@ def cap_per_component(rows, max_per_component=10):
 
     return out
 
+
 def compute_balance_validation(rows):
     """
     Compute diagnostic statistics for validating balancing outcomes.
@@ -732,9 +733,7 @@ def compute_balance_validation(rows):
 
     for eco, eco_rows in by_eco.items():
         comp_counter = Counter(r["component_name"] for r in eco_rows)
-        comp_ver_counter = Counter(
-            (r["component_name"], r["component_version"]) for r in eco_rows
-        )
+        comp_ver_counter = Counter((r["component_name"], r["component_version"]) for r in eco_rows)
 
         total = len(eco_rows)
         comp_counts = sorted(comp_counter.values(), reverse=True)
@@ -750,6 +749,7 @@ def compute_balance_validation(rows):
         }
 
     return result
+
 
 # ------------------------------------------------------------
 # Main
@@ -780,17 +780,14 @@ def main():
 
     balance = os.environ.get("BALANCE", "false").lower() in {"1", "true", "yes", "on"}
     balance_strategy = os.environ.get("BALANCE_STRATEGY", "min")
-    min_unique_component_ratio = float(
-        os.environ.get("MIN_UNIQUE_COMPONENT_RATIO", "0.5")
-    )
+    min_unique_component_ratio = float(os.environ.get("MIN_UNIQUE_COMPONENT_RATIO", "0.5"))
 
     start_date = os.environ.get("START_DATE", START_DATE)
     end_date = os.environ.get("END_DATE", END_DATE)
 
     if balance_strategy not in {"min", "median"}:
         raise ValueError(
-            f"Invalid BALANCE_STRATEGY={balance_strategy} "
-            "(expected 'min' or 'median')"
+            f"Invalid BALANCE_STRATEGY={balance_strategy} " "(expected 'min' or 'median')"
         )
 
     for eco in ecosystems:
@@ -856,6 +853,7 @@ def main():
         csv_path = build_dir / f"{base_name}.csv"
 
         import csv
+
         with csv_path.open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(
                 f,
@@ -879,9 +877,7 @@ def main():
     # Enrich rows with vulnerability descriptions
     # --------------------------------------------------------
     for r in all_rows:
-        r["vulnerability_description"] = get_vulnerability_description(
-            r["vulnerability_id"]
-        )
+        r["vulnerability_description"] = get_vulnerability_description(r["vulnerability_id"])
 
     # --------------------------------------------------------
     # Canonicalize OSV vulnerabilities
@@ -925,12 +921,8 @@ def main():
         capped_rows = []
 
         for (eco, name), rs in rows_by_comp.items():
-            versions = sorted(
-                {r["component_version"] for r in rs}, reverse=True
-            )
-            keep_versions = set(
-                versions[:MAX_COMPONENT_VERSIONS_PER_COMPONENT]
-            )
+            versions = sorted({r["component_version"] for r in rs}, reverse=True)
+            keep_versions = set(versions[:MAX_COMPONENT_VERSIONS_PER_COMPONENT])
 
             for r in rs:
                 if r["component_version"] in keep_versions:

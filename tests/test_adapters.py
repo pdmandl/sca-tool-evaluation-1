@@ -78,15 +78,20 @@ class TestBaseAdapter:
         monkeypatch.setenv("GROUND_TRUTH_BUILD_PATH", str(tmp_path))
         a = _DummyAdapter(config={})
         a._log_cli_call(
-            tool="cyclonedx", command=["cyclonedx", "--help"],
-            exit_code=0, stdout="out", stderr="err",
+            tool="cyclonedx",
+            command=["cyclonedx", "--help"],
+            exit_code=0,
+            stdout="out",
+            stderr="err",
         )
 
     def test_log_evaluation_sample(self):
-        f = Finding(ecosystem="pypi", component="x", version="1",
-                    cve="CVE-1", osv_id="OSV-1")
+        f = Finding(ecosystem="pypi", component="x", version="1", cve="CVE-1", osv_id="OSV-1")
         VulnerabilityToolAdapter.log_evaluation_sample(
-            idx=1, total=10, result="TP", finding=f,
+            idx=1,
+            total=10,
+            result="TP",
+            finding=f,
         )
 
     def test_iter_components(self, tmp_path, monkeypatch):
@@ -101,8 +106,9 @@ class TestBaseAdapter:
 # OSV adapter
 # --------------------------------------------------------------
 def _gt(**kw):
-    base = dict(ecosystem="pypi", component="django", version="3.2.0",
-                cve="CVE-1", ghsa=None, osv_id=None)
+    base = dict(
+        ecosystem="pypi", component="django", version="3.2.0", cve="CVE-1", ghsa=None, osv_id=None
+    )
     base.update(kw)
     return Finding(**base)
 
@@ -110,6 +116,7 @@ def _gt(**kw):
 class TestOSVAdapter:
     def _make(self, tmp_path, gt=None):
         import os
+
         os.environ["GROUND_TRUTH_BUILD_PATH"] = str(tmp_path)
         return OSVAdapter(config={"ground_truth": gt or []})
 
@@ -118,9 +125,7 @@ class TestOSVAdapter:
         assert a.name() == "osv"
         assert a.supports_security_findings() is True
         assert a.supports_fp_heuristic() is False
-        assert a.load_findings_for_component(
-            ecosystem="pypi", component="x", version="1.0"
-        ) == []
+        assert a.load_findings_for_component(ecosystem="pypi", component="x", version="1.0") == []
 
     def test_map_ecosystem(self, tmp_path):
         a = self._make(tmp_path)
@@ -185,10 +190,8 @@ class TestOSVAdapter:
 
     def test_dedup(self, tmp_path):
         a = self._make(tmp_path)
-        f1 = Finding(ecosystem="pypi", component="x", version="1",
-                     cve="CVE-1", osv_id="OSV-1")
-        f2 = Finding(ecosystem="pypi", component="x", version="1",
-                     cve="CVE-1", osv_id="OSV-2")
+        f1 = Finding(ecosystem="pypi", component="x", version="1", cve="CVE-1", osv_id="OSV-1")
+        f2 = Finding(ecosystem="pypi", component="x", version="1", cve="CVE-1", osv_id="OSV-2")
         out = a._dedup_to_gt_granularity([f1, f2])
         assert len(out) == 1
 
@@ -206,12 +209,14 @@ class TestOSVAdapter:
         a = self._make(tmp_path)
         resp = MagicMock(status_code=200)
         resp.json.return_value = {
-            "vulns": [{
-                "id": "OSV-9",
-                "aliases": ["CVE-1"],
-                "affected": [{"versions": ["3.2.0"], "ranges": []}],
-                "summary": "x",
-            }]
+            "vulns": [
+                {
+                    "id": "OSV-9",
+                    "aliases": ["CVE-1"],
+                    "affected": [{"versions": ["3.2.0"], "ranges": []}],
+                    "summary": "x",
+                }
+            ]
         }
         sess = MagicMock()
         sess.request.return_value = resp
@@ -227,14 +232,21 @@ class TestOSVAdapter:
         a = self._make(tmp_path)
         resp = MagicMock(status_code=200)
         resp.json.return_value = {
-            "vulns": [{
-                "id": "OSV-9",
-                "aliases": ["CVE-1"],
-                "affected": [{"versions": [], "ranges": [
-                    {"events": [{"introduced": "1.0"}, {"fixed": "5.0"}]},
-                ]}],
-                "summary": "x",
-            }]
+            "vulns": [
+                {
+                    "id": "OSV-9",
+                    "aliases": ["CVE-1"],
+                    "affected": [
+                        {
+                            "versions": [],
+                            "ranges": [
+                                {"events": [{"introduced": "1.0"}, {"fixed": "5.0"}]},
+                            ],
+                        }
+                    ],
+                    "summary": "x",
+                }
+            ]
         }
         sess = MagicMock()
         sess.request.return_value = resp
@@ -249,7 +261,8 @@ class TestOSVAdapter:
         a = self._make(tmp_path)
         resp = MagicMock(status_code=404)
         resp.json.return_value = {}
-        sess = MagicMock(); sess.request.return_value = resp
+        sess = MagicMock()
+        sess.request.return_value = resp
         mock_sess_cls.return_value = sess
         assert a._check_ground_truth_row(_gt()) is None
 
@@ -257,10 +270,9 @@ class TestOSVAdapter:
     def test_check_gt_row_disjoint_ids(self, mock_sess_cls, tmp_path):
         a = self._make(tmp_path)
         resp = MagicMock(status_code=200)
-        resp.json.return_value = {
-            "vulns": [{"id": "OSV-9", "aliases": [], "affected": []}]
-        }
-        sess = MagicMock(); sess.request.return_value = resp
+        resp.json.return_value = {"vulns": [{"id": "OSV-9", "aliases": [], "affected": []}]}
+        sess = MagicMock()
+        sess.request.return_value = resp
         mock_sess_cls.return_value = sess
         assert a._check_ground_truth_row(_gt()) is None
 

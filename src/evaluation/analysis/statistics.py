@@ -3,6 +3,8 @@ from __future__ import annotations
 import statistics
 from typing import List
 
+_MIDRULE = "\\midrule\n"
+
 
 # ------------------------------------------------------------
 # Aggregation of multiple runs
@@ -44,7 +46,7 @@ def add_confidence_intervals(agg: dict) -> dict:
             for metric in agg[tool][eco]:
                 std = agg[tool][eco][metric]["std"]
                 n = agg[tool][eco][metric].get("n", 1)
-                ci95 = 1.96 * std / (n ** 0.5) if n > 1 else 0.0
+                ci95 = 1.96 * std / (n**0.5) if n > 1 else 0.0
                 agg[tool][eco][metric]["ci95"] = ci95
 
     return agg
@@ -87,7 +89,9 @@ def write_latex_stats(agg, gt_summary, output_file, markers=None):
     with open(output_file, "w", encoding="utf-8") as f:
         f.write("\\begin{table*}[!t]\n\\centering\n\\small\n")
         f.write("\\begin{tabular}{lrrrrrrrr}\n\\toprule\n")
-        f.write("Ecosystem & Components & Vulnerabilities & CVEs & TP & FP & FN & Recall & Overlap \\\\\n\\midrule\n")
+        f.write(
+            "Ecosystem & Components & Vulnerabilities & CVEs & TP & FP & FN & Recall & Overlap \\\\\n\\midrule\n"
+        )
 
         for tool, ecos in agg.items():
             f.write(f"\\multicolumn{{9}}{{c}}{{\\textbf{{{tool}}}}} \\\\\n\\midrule\n")
@@ -129,7 +133,7 @@ def write_latex_stats(agg, gt_summary, output_file, markers=None):
             total_overlap = sum(overlap_values) / len(overlap_values) if overlap_values else 0.0
             marker = markers.get(tool, "")
 
-            f.write("\\midrule\n")
+            f.write(_MIDRULE)
             f.write(
                 f"\\textbf{{TOTAL}} & "
                 f"{total_components} & "
@@ -141,7 +145,7 @@ def write_latex_stats(agg, gt_summary, output_file, markers=None):
                 f"{total_recall:.2f}{marker} & "
                 f"{total_overlap:.2f} \\\\\n"
             )
-            f.write("\\midrule\n")
+            f.write(_MIDRULE)
 
         f.write("\\bottomrule\n\\end{tabular}\n\\end{table*}\n")
 
@@ -200,7 +204,7 @@ def write_ecosystem_summary_table(agg, gt_summary, output_file):
         total_mean_recall = total_rec / len(ecosystems) if ecosystems else 0.0
         total_mean_overlap = total_ov / len(ecosystems) if ecosystems else 0.0
 
-        f.write("\\midrule\n")
+        f.write(_MIDRULE)
         f.write(
             f"\\textbf{{TOTAL}} & {total_components} & {total_vulnerabilities} & "
             f"{int(total_tp)} & {int(total_fp)} & {int(total_fn)} & "
@@ -208,6 +212,7 @@ def write_ecosystem_summary_table(agg, gt_summary, output_file):
         )
 
         f.write("\\bottomrule\n\\end{tabular}\n\\end{table*}\n")
+
 
 # ------------------------------------------------------------
 # Compute significance markers for main table

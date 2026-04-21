@@ -1,4 +1,5 @@
 """Tests for pure helper functions in temporal_runner.py."""
+
 import json
 import os
 from pathlib import Path
@@ -145,8 +146,13 @@ class TestCollapseRepeatMetrics:
 class TestSummarizeToolMetrics:
     def _agg(self):
         from evaluation.analysis.statistics import aggregate, add_confidence_intervals
-        data = [{"osv": {"pypi": {"TP": 8, "FP": 1, "FN": 2, "Recall": 0.8, "Overlap": 0.9}},
-                 "snyk": {"pypi": {"TP": 7, "FP": 2, "FN": 3, "Recall": 0.7, "Overlap": 0.8}}}]
+
+        data = [
+            {
+                "osv": {"pypi": {"TP": 8, "FP": 1, "FN": 2, "Recall": 0.8, "Overlap": 0.9}},
+                "snyk": {"pypi": {"TP": 7, "FP": 2, "FN": 3, "Recall": 0.7, "Overlap": 0.8}},
+            }
+        ]
         agg = aggregate(data)
         add_confidence_intervals(agg)
         return agg
@@ -184,8 +190,16 @@ class TestSummarizeRepeatConsistency:
 
 class TestRenderTexts:
     def test_render_tool_summary(self):
-        summary = [{"tool": "osv", "mean_recall": 0.8, "mean_overlap": 0.9,
-                    "total_tp": 10.0, "total_fp": 1.0, "total_fn": 2.0}]
+        summary = [
+            {
+                "tool": "osv",
+                "mean_recall": 0.8,
+                "mean_overlap": 0.9,
+                "total_tp": 10.0,
+                "total_fp": 1.0,
+                "total_fn": 2.0,
+            }
+        ]
         text = render_tool_summary_text(summary, markers={"osv": "*"}, baseline="oss-index")
         assert "osv*" in text
         assert "mean_recall" in text
@@ -216,6 +230,7 @@ class TestSetupLogger:
     def test_creates_log_file(self, tmp_path):
         setup_logger(tmp_path)
         from evaluation.temporal_runner import log
+
         log.info("test message")
         log_file = tmp_path / "run.log"
         assert log_file.exists()

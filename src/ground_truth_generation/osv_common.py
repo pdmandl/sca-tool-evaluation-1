@@ -38,10 +38,7 @@ OSV_VULN_URL = "https://api.osv.dev/v1/vulns/{vuln_id}"
 # PyPI URLs (REQUIRED by pypi collector)
 # ------------------------------------------------------------
 
-PYPI_TOP_URL = (
-    "https://hugovk.github.io/top-pypi-packages/"
-    "top-pypi-packages-30-days.json"
-)
+PYPI_TOP_URL = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-30-days.json"
 
 PYPI_JSON_URL = "https://pypi.org/pypi/{name}/json"
 
@@ -54,6 +51,7 @@ API_CALL_TRACKER = ApiCallTracker()
 # ------------------------------------------------------------
 # HTTP Helpers
 # ------------------------------------------------------------
+
 
 def request_json(
     url: str,
@@ -80,6 +78,7 @@ def request_json(
                 raise
             log.warning("request failed (%s), retrying...", e)
             time.sleep(1)
+
 
 def request_json_with_retry(
     url,
@@ -110,8 +109,6 @@ def request_json_with_retry(
         headers = {
             "Accept": "application/json",
         }
-
-    last_exception = None
 
     # --------------------------------------------------------
     # Retry loop
@@ -144,16 +141,12 @@ def request_json_with_retry(
 
             # Retry on server-side errors
             if response.status_code >= 500:
-                raise RuntimeError(
-                    f"HTTP {response.status_code} from {url}"
-                )
+                raise RuntimeError(f"HTTP {response.status_code} from {url}")
 
             # Client-side errors (4xx): do NOT retry
             return None
 
-        except Exception as e:
-            last_exception = e
-
+        except Exception:
             # Last attempt -> give up
             if attempt >= retries:
                 break
@@ -167,10 +160,10 @@ def request_json_with_retry(
     return None
 
 
-
 # ------------------------------------------------------------
 # Version Semantics (MONOLITH-COMPATIBLE)
 # ------------------------------------------------------------
+
 
 def is_stable(version: str) -> bool:
     """
@@ -235,9 +228,11 @@ def version_is_affected(vuln: dict, version: str) -> bool:
 
     return False
 
+
 # ------------------------------------------------------------
 # Advisory Expansion (MONOLITH)
 # ------------------------------------------------------------
+
 
 def expand_advisories(vuln: dict) -> List[Tuple[str, Optional[str]]]:
     vuln_id = vuln.get("id")
@@ -248,9 +243,11 @@ def expand_advisories(vuln: dict) -> List[Tuple[str, Optional[str]]]:
         return [(vuln_id, cve) for cve in cves]
     return [(vuln_id, None)]
 
+
 # ------------------------------------------------------------
 # Normalization / Identifiers
 # ------------------------------------------------------------
+
 
 def normalize_pypi_name(name: str) -> str:
     return name.strip().lower().replace("_", "-")
@@ -262,9 +259,11 @@ def purl(ecosystem: str, name: str, version: str) -> str:
         return f"pkg:pypi/{normalize_pypi_name(name)}@{version}"
     return f"pkg:{eco}/{name}@{version}"
 
+
 # ------------------------------------------------------------
 # Verification (MONOLITH)
 # ------------------------------------------------------------
+
 
 def verify_dataset_against_osv(rows: List[Dict]) -> None:
     log.info("=== verifying dataset against OSV ===")
@@ -290,10 +289,10 @@ def verify_dataset_against_osv(rows: List[Dict]) -> None:
     log.info("verification finished | mismatches=%d", mismatches)
 
 
-
 # ------------------------------------------------------------
 # Write List of candidates
 # ------------------------------------------------------------
+
 
 def write_candidate_coverage(
     ecosystem: str,
@@ -312,12 +311,14 @@ def write_candidate_coverage(
 
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow([
-            "ecosystem",
-            "component_name",
-            "has_vulnerabilities",
-            "vulnerability_count",
-        ])
+        writer.writerow(
+            [
+                "ecosystem",
+                "component_name",
+                "has_vulnerabilities",
+                "vulnerability_count",
+            ]
+        )
 
         for name, info in sorted(candidate_coverage.items()):
             has_v = bool(info["has_vulns"])
@@ -326,12 +327,14 @@ def write_candidate_coverage(
             else:
                 without_vulns += 1
 
-            writer.writerow([
-                ecosystem,
-                name,
-                has_v,
-                info["vuln_count"],
-            ])
+            writer.writerow(
+                [
+                    ecosystem,
+                    name,
+                    has_v,
+                    info["vuln_count"],
+                ]
+            )
 
     log.info(
         "%s candidates | tested=%d | with_vulns=%d | without_vulns=%d",
@@ -346,6 +349,7 @@ def write_candidate_coverage(
 
 from datetime import datetime
 from typing import Optional
+
 
 def within_date_window(
     published: Optional[datetime],
@@ -368,6 +372,7 @@ def within_date_window(
         return False
 
     return True
+
 
 from datetime import datetime, timezone
 from typing import Optional

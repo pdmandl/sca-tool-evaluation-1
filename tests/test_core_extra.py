@@ -38,8 +38,12 @@ class TestFPClassification:
             raise_for_status=lambda: None,
         )
         out = classify_fp_candidate(
-            {"cve": "CVE-2024-9999", "ecosystem": "pypi", "component": "django",
-             "description": "hi"}
+            {
+                "cve": "CVE-2024-9999",
+                "ecosystem": "pypi",
+                "component": "django",
+                "description": "hi",
+            }
         )
         assert out[0] == "FP-CERTAIN"
 
@@ -50,8 +54,12 @@ class TestFPClassification:
             raise_for_status=lambda: None,
         )
         out = classify_fp_candidate(
-            {"cve": "CVE-1", "ecosystem": "pypi", "component": "x",
-             "description": "enterprise console"}
+            {
+                "cve": "CVE-1",
+                "ecosystem": "pypi",
+                "component": "x",
+                "description": "enterprise console",
+            }
         )
         assert out[0] == "FP-LIKELY"
 
@@ -62,8 +70,7 @@ class TestFPClassification:
             raise_for_status=lambda: None,
         )
         out = classify_fp_candidate(
-            {"cve": "CVE-1", "ecosystem": "pypi", "component": "x",
-             "description": "a library"}
+            {"cve": "CVE-1", "ecosystem": "pypi", "component": "x", "description": "a library"}
         )
         assert out[0] == "FP-UNCLEAR"
 
@@ -88,27 +95,38 @@ class TestGroundTruthLoad:
             w = csv.DictWriter(
                 f,
                 fieldnames=[
-                    "ecosystem", "component_name", "component_version",
-                    "purl", "cve", "vulnerability_id",
+                    "ecosystem",
+                    "component_name",
+                    "component_version",
+                    "purl",
+                    "cve",
+                    "vulnerability_id",
                     "vulnerability_description",
                 ],
             )
             w.writeheader()
-            w.writerow({
-                "ecosystem": "PyPI", "component_name": "Django",
-                "component_version": "3.2.0",
-                "purl": "pkg:pypi/django@3.2.0",
-                "cve": "CVE-2024-1",
-                "vulnerability_id": "GHSA-aaaa",
-                "vulnerability_description": "some desc",
-            })
-            w.writerow({
-                "ecosystem": "Maven", "component_name": "com.foo:bar",
-                "component_version": "1.0",
-                "purl": "",
-                "cve": "", "vulnerability_id": "OSV-1",
-                "vulnerability_description": "",
-            })
+            w.writerow(
+                {
+                    "ecosystem": "PyPI",
+                    "component_name": "Django",
+                    "component_version": "3.2.0",
+                    "purl": "pkg:pypi/django@3.2.0",
+                    "cve": "CVE-2024-1",
+                    "vulnerability_id": "GHSA-aaaa",
+                    "vulnerability_description": "some desc",
+                }
+            )
+            w.writerow(
+                {
+                    "ecosystem": "Maven",
+                    "component_name": "com.foo:bar",
+                    "component_version": "1.0",
+                    "purl": "",
+                    "cve": "",
+                    "vulnerability_id": "OSV-1",
+                    "vulnerability_description": "",
+                }
+            )
 
         rows = load_ground_truth(p)
         assert len(rows) == 2

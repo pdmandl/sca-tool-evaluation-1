@@ -38,7 +38,6 @@ def plot_significance_matrix(rows, tools, output_path):
     n = len(tools)
     tool_index = {tool: idx for idx, tool in enumerate(tools)}
 
-    # 0 = diagonal, 1 = significant, 2 = not significant
     display = np.full((n, n), 2, dtype=int)
     np.fill_diagonal(display, 0)
 
@@ -143,12 +142,8 @@ def plot_tool_comparison(agg: dict, output_path) -> None:
             mean_overlap.append(0.0)
             continue
 
-        recall = sum(
-            agg[tool][eco]["Recall"]["mean"] for eco in ecosystems
-        ) / len(ecosystems)
-        overlap = sum(
-            agg[tool][eco]["Overlap"]["mean"] for eco in ecosystems
-        ) / len(ecosystems)
+        recall = sum(agg[tool][eco]["Recall"]["mean"] for eco in ecosystems) / len(ecosystems)
+        overlap = sum(agg[tool][eco]["Overlap"]["mean"] for eco in ecosystems) / len(ecosystems)
 
         mean_recall.append(recall)
         mean_overlap.append(overlap)
