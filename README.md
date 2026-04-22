@@ -161,8 +161,20 @@ The following tools must be installed locally before their respective adapters c
 
 | Tool | Installation |
 |---|---|
-| **Snyk CLI** | `npm install -g snyk` then `snyk auth` |
+| **Snyk CLI** | `npm install -g snyk` — then authenticate (see below) |
 | **Trivy** | https://aquasecurity.github.io/trivy/latest/getting-started/installation/ |
+
+> **Snyk authentication required before every use**
+>
+> After installation, run `snyk auth` once to log in. The CLI opens a browser
+> window to complete OAuth authentication against your Snyk account. The session
+> token is stored locally (`~/.config/snyk/snyk.json`); it expires after a
+> period of inactivity. If `snyk` is included in `EVAL_TOOLS` and authentication
+> has not been completed, the Snyk adapter will fail silently or return zero
+> findings — run `snyk auth` again to refresh the token.
+>
+> A free Snyk account is sufficient for SBOM-based scanning. Sign up at
+> https://app.snyk.io/login if you do not yet have an account.
 
 ### Dependency-Track instance
 

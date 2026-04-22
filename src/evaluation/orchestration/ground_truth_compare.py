@@ -82,7 +82,7 @@ def compare_ground_truth(gt0_path: Path, gt1_path: Path, output_dir: Path) -> di
         "gt1_path": str(gt1_path),
         "gt0_hash": hash_gt(gt0_path),
         "gt1_hash": hash_gt(gt1_path),
-        "equal": rows0 == rows1,
+        "equal": c0 == c1,
         "gt0_total_rows": len(rows0),
         "gt1_total_rows": len(rows1),
         "gt0_unique_findings": len(s0),
