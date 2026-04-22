@@ -13,7 +13,7 @@ The framework is intended for research-grade reproducibility. It supports:
 - generation of versioned ground-truth datasets,
 - normalization of findings from multiple SCA tools and advisory sources,
 - project-centric matching against ground truth,
-- calculation of `TP`, `FP`, `FN`, `Recall`, and `Overlap`,
+- calculation of `TP`, `FP`<sub>`GT`</sub>, `FN`, `Recall`, and `Overlap`,
 - diagnostic false-positive and false-negative analysis,
 - repeated temporal runs with aggregation and significance testing,
 - export of machine-readable and publication-ready artifacts.
@@ -96,7 +96,7 @@ The current evaluation pipeline includes adapters for:
 ├── ground_truth_generation/
 ├── build_multi_ground_truth_dataset.py
 ├── docs/
-│   └── README_tool_evaluation.md  # adapter details, metrics, FP heuristic reference
+│   └── README_tool_evaluation.md  # adapter details, metrics, FP<sub>GT</sub> heuristic reference
 ├── results/
 │   ├── paper/         # archived evaluation runs referenced by the paper
 │   ├── sbom/          # CycloneDX SBOM of the framework
@@ -258,7 +258,7 @@ Main tasks:
 - initialize the selected adapter,
 - normalize tool findings,
 - evaluate tool findings against ground truth,
-- compute `TP`, `FP`, `FN`, `Recall`, and `Overlap`,
+- compute `TP`, `FP`<sub>`GT`</sub>, `FN`, `Recall`, and `Overlap`,
 - classify diagnostic false positives and false negatives,
 - write reports and normalized finding dumps.
 
@@ -316,7 +316,7 @@ No fuzzy string matching is used anywhere in the pipeline.
 ### Classification
 
 - **TP** — tool finding matches a ground-truth entry (identifier + version)
-- **FP** — tool finding matches no ground-truth entry
+- **FP<sub>GT</sub>** — tool finding matches no ground-truth entry
 - **FN** — ground-truth entry has no matching tool finding
 
 False negatives are further broken down with a strict precedence:
@@ -347,14 +347,14 @@ The evaluation pipeline computes, at minimum, the following per ecosystem:
 - `Vulnerabilities`
 - `CVEs`
 - `TP`
-- `FP`
+- `FP`<sub>`GT`</sub>
 - `FN`
 - `Recall`
 - `Overlap`
 
 Interpretation:
 - **Recall** = `TP / (TP + FN)`
-- **Overlap** = `TP / (TP + FP)`
+- **Overlap** = `TP / (TP + FP`<sub>`GT`</sub>`)`
 
 The pipeline also builds a binary ground-truth detection vector aligned with the original ground-truth order for significance analysis across repeated runs.
 
