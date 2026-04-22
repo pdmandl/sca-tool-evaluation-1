@@ -22,5 +22,14 @@
   "upload_type": "software",
   "access_right": "open",
   "version": "0.1.0",
-  "language": "eng"
+  "publication_date": "2026-04-22",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "relation": "isSupplementTo",
+      "identifier": "ARXIV_DOI_PLACEHOLDER",
+      "scheme": "doi",
+      "resource_type": "publication-preprint"
+    }
+  ]
 }
