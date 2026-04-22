@@ -390,11 +390,11 @@ def collect_maven(
             versions = versions[:MAVEN_MAX_VERSIONS_PER_PACKAGE]
 
         for version in versions:
-            published = resolve_maven_published_date(artifact, version)
-
-            if published and not within_date_window(published, start_dt, end_dt):
-                continue
-
+            # Date-window filtering via search.maven.org is intentionally skipped
+            # here: the API is rate-limited and unreliable, causing non-deterministic
+            # version selection between GT0 and GT1 builds. OSV itself records
+            # vulnerability publication dates, so temporal scope is applied at the
+            # advisory level rather than the package-release level.
             payload = {"package": {"ecosystem": "Maven", "name": artifact}, "version": version}
             res = request_json_with_retry(OSV_QUERY_URL, payload)
 

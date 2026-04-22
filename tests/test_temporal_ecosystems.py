@@ -1188,20 +1188,16 @@ class TestCollectMaven:
 
         assert rows == []
 
-    def test_date_window_filters_old_versions(self):
+    def test_date_window_not_applied_for_maven(self):
+        # Date-window filtering was removed from collect_maven (search.maven.org
+        # is unreliable and caused non-deterministic GT0/GT1 results). Versions
+        # are now always included regardless of publication date.
         from ground_truth_generation.ecosystems.maven import collect_maven
-        import datetime
-
-        old_date = datetime.datetime(2010, 6, 1, tzinfo=datetime.timezone.utc)
 
         with (
             patch(
                 "ground_truth_generation.ecosystems.maven._fetch_maven_versions",
                 return_value=["1.0"],
-            ),
-            patch(
-                "ground_truth_generation.ecosystems.maven.resolve_maven_published_date",
-                return_value=old_date,
             ),
             patch(
                 "ground_truth_generation.ecosystems.maven.request_json_with_retry",
@@ -1210,7 +1206,7 @@ class TestCollectMaven:
         ):
             rows = collect_maven(samples=1, start_date="2020-01-01")
 
-        assert rows == []
+        assert len(rows) == 1
 
     def test_osv_cache_populated(self):
         from ground_truth_generation.ecosystems.maven import collect_maven
