@@ -27,7 +27,7 @@ license: Apache-2.0
 repository-code: "https://github.com/prcmandl/sca-tool-evaluation"
 url: "https://github.com/prcmandl/sca-tool-evaluation"
 date-released: "2026-04-22"
-doi: "ZENODO_DOI_PLACEHOLDER"
+doi: "10.5281/zenodo.19697250"
 preferred-citation:
   type: article
   title: "Benchmarking Software Composition Analysis Tools"
@@ -37,5 +37,5 @@ preferred-citation:
       affiliation: "Munich University of Applied Sciences"
       orcid: "https://orcid.org/0000-0003-4508-7667"
   year: 2026
-  url: "ARXIV_URL_PLACEHOLDER"
-  doi: "ARXIV_DOI_PLACEHOLDER"
+  url: "https://arxiv.org/abs/2604.21111"
+  doi: "10.48550/arXiv.2604.21111"

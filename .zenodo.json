@@ -27,9 +27,15 @@
   "related_identifiers": [
     {
       "relation": "isSupplementTo",
-      "identifier": "ARXIV_DOI_PLACEHOLDER",
+      "identifier": "10.48550/arXiv.2604.21111",
       "scheme": "doi",
       "resource_type": "publication-preprint"
+    },
+    {
+      "relation": "isSupplementTo",
+      "identifier": "10.5281/zenodo.19696658",
+      "scheme": "doi",
+      "resource_type": "dataset"
     }
   ]
 }

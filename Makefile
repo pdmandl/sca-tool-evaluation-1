@@ -28,7 +28,10 @@ PYTEST        ?= pytest
 RUFF          ?= ruff
 COVERAGE      ?= coverage
 # Add path to local sonar scanner
-SONAR_SCANNER ?= sonar-scanner
+# Example for MacOS: SONAR_SCANNER   ?= /usr/local/sonarscanner/bin/sonar-scanner
+#SONAR_SCANNER ?= sonar-scanner
+SONAR_SCANNER   ?= /usr/local/sonarscanner/bin/sonar-scanner
+
 
 
 .PHONY: help install test coverage lint format sbom sonar clean check-tools check-sonarqube all
