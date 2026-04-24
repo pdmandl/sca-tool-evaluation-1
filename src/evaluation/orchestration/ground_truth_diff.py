@@ -8,6 +8,8 @@ from pathlib import Path
 
 from evaluation.core.ground_truth import load_ground_truth
 
+_SEPARATOR = "----------------------------------------\n"
+
 
 def finding_to_row(f):
     vuln_id = f.cve or f.osv_id or ""
@@ -42,11 +44,13 @@ def expand_counter_difference(counter_a: Counter, counter_b: Counter):
 
 
 def summarize_by_ecosystem(keys):
-    stats = defaultdict(lambda: {
-        "rows": 0,
-        "components": set(),
-        "vuln_ids": set(),
-    })
+    stats = defaultdict(
+        lambda: {
+            "rows": 0,
+            "components": set(),
+            "vuln_ids": set(),
+        }
+    )
 
     for eco, comp, ver, vuln_id in keys:
         stats[eco]["rows"] += 1
@@ -101,9 +105,7 @@ def build_diff(gt0_path: Path, gt1_path: Path, output_dir: Path) -> dict:
         "added_rows": len(added),
         "removed_rows": len(removed),
         "net_row_delta": len(gt1_keys) - len(gt0_keys),
-        "jaccard_unique_findings": (
-            len(shared_unique) / len(all_unique) if all_unique else 1.0
-        ),
+        "jaccard_unique_findings": (len(shared_unique) / len(all_unique) if all_unique else 1.0),
         "added_by_ecosystem": summarize_by_ecosystem(added),
         "removed_by_ecosystem": summarize_by_ecosystem(removed),
         "top_added_examples": [list(x) for x in added[:25]],
@@ -132,7 +134,7 @@ def build_diff(gt0_path: Path, gt1_path: Path, output_dir: Path) -> dict:
         f.write(f"Jaccard(unique):        {summary['jaccard_unique_findings']:.4f}\n\n")
 
         f.write("ADDED BY ECOSYSTEM\n")
-        f.write("----------------------------------------\n")
+        f.write(_SEPARATOR)
         for eco, vals in summary["added_by_ecosystem"].items():
             f.write(
                 f"{eco}: rows={vals['rows']}, "
@@ -141,7 +143,7 @@ def build_diff(gt0_path: Path, gt1_path: Path, output_dir: Path) -> dict:
             )
 
         f.write("\nREMOVED BY ECOSYSTEM\n")
-        f.write("----------------------------------------\n")
+        f.write(_SEPARATOR)
         for eco, vals in summary["removed_by_ecosystem"].items():
             f.write(
                 f"{eco}: rows={vals['rows']}, "
@@ -150,12 +152,12 @@ def build_diff(gt0_path: Path, gt1_path: Path, output_dir: Path) -> dict:
             )
 
         f.write("\nTOP ADDED EXAMPLES\n")
-        f.write("----------------------------------------\n")
+        f.write(_SEPARATOR)
         for row in added[:25]:
             f.write(f"{row}\n")
 
         f.write("\nTOP REMOVED EXAMPLES\n")
-        f.write("----------------------------------------\n")
+        f.write(_SEPARATOR)
         for row in removed[:25]:
             f.write(f"{row}\n")
 

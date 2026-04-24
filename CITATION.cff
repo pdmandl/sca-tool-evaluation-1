@@ -26,22 +26,16 @@ keywords:
 license: Apache-2.0
 repository-code: "https://github.com/prcmandl/sca-tool-evaluation"
 url: "https://github.com/prcmandl/sca-tool-evaluation"
-# TODO: set a real release date once v0.1.0 is tagged
-date-released: "2026-04-18"
-# TODO: once the accompanying paper is published, point preferred-citation
-# to the paper instead of the software artifact (type: article, add journal,
-# volume, pages, DOI, year).
+date-released: "2026-04-22"
+doi: "10.5281/zenodo.19697250"
 preferred-citation:
-  type: software
-  title: "SCA Tool Evaluation Framework"
-  version: "0.1.0"
+  type: article
+  title: "Benchmarking Software Composition Analysis Tools"
   authors:
     - family-names: "Mandl"
       given-names: "Peter"
       affiliation: "Munich University of Applied Sciences"
       orcid: "https://orcid.org/0000-0003-4508-7667"
-  publisher: "Zenodo"
-  # TODO: replace with the Zenodo DOI once archived
-  doi: "10.5281/zenodo.XXXXXXX"
-  url: "https://doi.org/10.5281/zenodo.XXXXXXX"
   year: 2026
+  url: "https://arxiv.org/abs/2604.21111"
+  doi: "10.48550/arXiv.2604.21111"

@@ -5,10 +5,14 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import os
 
+_COL_COMP_OSV = "Comp/OSV"
+_COL_CVE_OSV = "CVE/OSV"
+
 
 # ============================================================
 # Helper: environment (effective value + source)
 # ============================================================
+
 
 def _env_int_effective(name: str, default: int) -> Tuple[int, str]:
     """
@@ -34,6 +38,7 @@ def _env_int_effective(name: str, default: int) -> Tuple[int, str]:
 # Helper: global counts
 # ============================================================
 
+
 def compute_global_counts(rows: List[dict]) -> Tuple[int, int]:
     """
     Compute global dataset counts.
@@ -47,10 +52,7 @@ def compute_global_counts(rows: List[dict]) -> Tuple[int, int]:
             Number of unique OSV vulnerability entries defined as
             (ecosystem, component_name, component_version, vulnerability_id)
     """
-    components = {
-        (r["ecosystem"], r["component_name"], r["component_version"])
-        for r in rows
-    }
+    components = {(r["ecosystem"], r["component_name"], r["component_version"]) for r in rows}
 
     osv_vulns = {
         (
@@ -69,6 +71,7 @@ def compute_global_counts(rows: List[dict]) -> Tuple[int, int]:
 # Helper: pre-balancing statistics
 # ============================================================
 
+
 def compute_pre_balance_stats(rows: List[dict]) -> Dict[str, dict]:
     """
     Compute pre-balancing coverage statistics from raw OSV rows.
@@ -81,12 +84,14 @@ def compute_pre_balance_stats(rows: List[dict]) -> Dict[str, dict]:
         unique_cves,
       }
     """
-    stats = defaultdict(lambda: {
-        "osv_vulns": set(),
-        "components": set(),
-        "cve_findings": set(),
-        "cves": set(),
-    })
+    stats = defaultdict(
+        lambda: {
+            "osv_vulns": set(),
+            "components": set(),
+            "cve_findings": set(),
+            "cves": set(),
+        }
+    )
 
     for r in rows:
         eco = r["ecosystem"]
@@ -95,15 +100,11 @@ def compute_pre_balance_stats(rows: List[dict]) -> Dict[str, dict]:
             (eco, r["component_name"], r["component_version"], r["vulnerability_id"])
         )
 
-        stats[eco]["components"].add(
-            (r["component_name"], r["component_version"])
-        )
+        stats[eco]["components"].add((r["component_name"], r["component_version"]))
 
         if r.get("cve"):
             stats[eco]["cves"].add(r["cve"])
-            stats[eco]["cve_findings"].add(
-                (r["component_name"], r["component_version"], r["cve"])
-            )
+            stats[eco]["cve_findings"].add((r["component_name"], r["component_version"], r["cve"]))
 
     out = {}
     for eco, s in stats.items():
@@ -120,6 +121,7 @@ def compute_pre_balance_stats(rows: List[dict]) -> Dict[str, dict]:
 # ============================================================
 # Writer: statistics file
 # ============================================================
+
 
 def write_statistics(
     *,
@@ -163,18 +165,20 @@ def write_statistics(
             return "-"
         return "True" if str(v).lower() in {"1", "true", "yes", "on"} else "False"
 
-    component_count, osv_vuln_entries = compute_global_counts(rows)
+    _, _ = compute_global_counts(rows)
 
     # --------------------------------------------------------
     # Per-ecosystem (POST-balancing)
     # --------------------------------------------------------
 
-    per_eco = defaultdict(lambda: {
-        "components": set(),
-        "osv_vulns": set(),
-        "cve_findings": set(),
-        "cves": set(),
-    })
+    per_eco = defaultdict(
+        lambda: {
+            "components": set(),
+            "osv_vulns": set(),
+            "cve_findings": set(),
+            "cves": set(),
+        }
+    )
 
     for r in rows:
         eco = r["ecosystem"]
@@ -293,13 +297,9 @@ def write_statistics(
             total_cve_findings += cve_f
             total_unique_cves |= s["cves"]
 
-            comp_counter = Counter(
-                r["component_name"]
-                for r in rows if r["ecosystem"] == eco
-            )
+            comp_counter = Counter(r["component_name"] for r in rows if r["ecosystem"] == eco)
             compver_counter = Counter(
-                (r["component_name"], r["component_version"])
-                for r in rows if r["ecosystem"] == eco
+                (r["component_name"], r["component_version"]) for r in rows if r["ecosystem"] == eco
             )
 
             comp_freqs = list(comp_counter.values())
@@ -310,71 +310,80 @@ def write_statistics(
 
             def stats(v):
                 return (
-                    max(v),
-                    mean(v),
-                    min(v),
-                    median(v),
-                ) if v else (0, 0.0, 0, 0.0)
+                    (
+                        max(v),
+                        mean(v),
+                        min(v),
+                        median(v),
+                    )
+                    if v
+                    else (0, 0.0, 0, 0.0)
+                )
 
             max_c, avg_c, min_c, med_c = stats(comp_freqs)
             max_cv, avg_cv, min_cv, med_cv = stats(compver_freqs)
 
-            table_rows.append({
-                "Ecosystem": eco,
-                "Components": comp,
-                "OSV-Vulns": osv,
-                "CVE-Findings": cve_f,
-                "CVEs": cves,
-                "Comp/OSV": f"{(comp / osv if osv else 0):.2f}",
-                "CVE/OSV": f"{(cve_f / osv if osv else 0):.2f}",
-                "Vuln-Share": f"{(osv / total_osv if total_osv else 0):.2%}",
-                "Comp-Share": f"{(comp / total_components if total_components else 0):.2%}",
-                "MaxCompFreq": max_c,
-                "MaxCompVerFreq": max_cv,
-                "AvgCompFreq": f"{avg_c:.2f}",
-                "AvgCompVerFreq": f"{avg_cv:.2f}",
-                "MinCompFreq": min_c,
-                "MinCompVerFreq": min_cv,
-                "MedianCompFreq": f"{med_c:.2f}",
-                "MedianCompVerFreq": f"{med_cv:.2f}",
-            })
+            table_rows.append(
+                {
+                    "Ecosystem": eco,
+                    "Components": comp,
+                    "OSV-Vulns": osv,
+                    "CVE-Findings": cve_f,
+                    "CVEs": cves,
+                    _COL_COMP_OSV: f"{(comp / osv if osv else 0):.2f}",
+                    _COL_CVE_OSV: f"{(cve_f / osv if osv else 0):.2f}",
+                    "Vuln-Share": f"{(osv / total_osv if total_osv else 0):.2%}",
+                    "Comp-Share": f"{(comp / total_components if total_components else 0):.2%}",
+                    "MaxCompFreq": max_c,
+                    "MaxCompVerFreq": max_cv,
+                    "AvgCompFreq": f"{avg_c:.2f}",
+                    "AvgCompVerFreq": f"{avg_cv:.2f}",
+                    "MinCompFreq": min_c,
+                    "MinCompVerFreq": min_cv,
+                    "MedianCompFreq": f"{med_c:.2f}",
+                    "MedianCompVerFreq": f"{med_cv:.2f}",
+                }
+            )
 
         def gstats(v):
             return (
-                max(v),
-                mean(v),
-                min(v),
-                median(v),
-            ) if v else (0, 0.0, 0, 0.0)
+                (
+                    max(v),
+                    mean(v),
+                    min(v),
+                    median(v),
+                )
+                if v
+                else (0, 0.0, 0, 0.0)
+            )
 
         g_max_c, g_avg_c, g_min_c, g_med_c = gstats(all_comp_freq)
         g_max_cv, g_avg_cv, g_min_cv, g_med_cv = gstats(all_compver_freq)
 
-        table_rows.append({
-            "Ecosystem": "TOTAL",
-            "Components": total_components,
-            "OSV-Vulns": total_osv,
-            "CVE-Findings": total_cve_findings,
-            "CVEs": len(total_unique_cves),
-            "Comp/OSV": f"{(total_components / total_osv if total_osv else 0):.2f}",
-            "CVE/OSV": f"{(total_cve_findings / total_osv if total_osv else 0):.2f}",
-            "Vuln-Share": "100.00%",
-            "Comp-Share": "100.00%",
-            "MaxCompFreq": g_max_c,
-            "MaxCompVerFreq": g_max_cv,
-            "AvgCompFreq": f"{g_avg_c:.2f}",
-            "AvgCompVerFreq": f"{g_avg_cv:.2f}",
-            "MinCompFreq": g_min_c,
-            "MinCompVerFreq": g_min_cv,
-            "MedianCompFreq": f"{g_med_c:.2f}",
-            "MedianCompVerFreq": f"{g_med_cv:.2f}",
-        })
+        table_rows.append(
+            {
+                "Ecosystem": "TOTAL",
+                "Components": total_components,
+                "OSV-Vulns": total_osv,
+                "CVE-Findings": total_cve_findings,
+                "CVEs": len(total_unique_cves),
+                _COL_COMP_OSV: f"{(total_components / total_osv if total_osv else 0):.2f}",
+                _COL_CVE_OSV: f"{(total_cve_findings / total_osv if total_osv else 0):.2f}",
+                "Vuln-Share": "100.00%",
+                "Comp-Share": "100.00%",
+                "MaxCompFreq": g_max_c,
+                "MaxCompVerFreq": g_max_cv,
+                "AvgCompFreq": f"{g_avg_c:.2f}",
+                "AvgCompVerFreq": f"{g_avg_cv:.2f}",
+                "MinCompFreq": g_min_c,
+                "MinCompVerFreq": g_min_cv,
+                "MedianCompFreq": f"{g_med_c:.2f}",
+                "MedianCompVerFreq": f"{g_med_cv:.2f}",
+            }
+        )
 
         columns = list(table_rows[0].keys())
-        col_width = {
-            c: max(len(c), max(len(str(r[c])) for r in table_rows)) + 1
-            for c in columns
-        }
+        col_width = {c: max(len(c), max(len(str(r[c])) for r in table_rows)) + 1 for c in columns}
 
         header = " | ".join(f"{c:<{col_width[c]}}" for c in columns)
         table_width = sum(col_width[c] for c in columns) + 3 * (len(columns) - 1)
@@ -397,11 +406,13 @@ def write_statistics(
         w("Top-20 components by frequency (post-balancing)")
         w("-----------------------------------------------")
 
-        comp_stats = defaultdict(lambda: {
-            "ecosystem": None,
-            "versions": set(),
-            "samples": 0,
-        })
+        comp_stats = defaultdict(
+            lambda: {
+                "ecosystem": None,
+                "versions": set(),
+                "samples": 0,
+            }
+        )
 
         for r in rows:
             key = (r["ecosystem"], r["component_name"])
@@ -417,12 +428,14 @@ def write_statistics(
 
         table_rows = []
         for (eco, name), s in top_components:
-            table_rows.append({
-                "Ecosystem": eco,
-                "Component": name,
-                "Versions": sorted(s["versions"]),
-                "Samples": s["samples"],
-            })
+            table_rows.append(
+                {
+                    "Ecosystem": eco,
+                    "Component": name,
+                    "Versions": sorted(s["versions"]),
+                    "Samples": s["samples"],
+                }
+            )
 
         columns = ["Ecosystem", "Component", "Versions", "Samples"]
 
@@ -430,10 +443,7 @@ def write_statistics(
             return row[col] if col == "Versions" else [str(row[col])]
 
         col_width = {
-            c: max(
-                len(c),
-                max(len(line) for r in table_rows for line in cell_lines(r, c))
-            ) + 1
+            c: max(len(c), max(len(line) for r in table_rows for line in cell_lines(r, c))) + 1
             for c in columns
         }
 
@@ -446,10 +456,12 @@ def write_statistics(
         for row in table_rows:
             max_lines = max(len(cell_lines(row, c)) for c in columns)
             for i in range(max_lines):
-                w(" | ".join(
-                    f"{(cell_lines(row, c)[i] if i < len(cell_lines(row, c)) else ''):<{col_width[c]}}"
-                    for c in columns
-                ))
+                w(
+                    " | ".join(
+                        f"{(cell_lines(row, c)[i] if i < len(cell_lines(row, c)) else ''):<{col_width[c]}}"
+                        for c in columns
+                    )
+                )
             w("-" * table_width)
 
         w()
@@ -511,12 +523,12 @@ def write_statistics(
         w("  Number of unique CVE identifiers referenced by OSV advisories")
         w("  in this ecosystem, independent of affected components or versions.")
         w()
-        w("Comp/OSV")
+        w(_COL_COMP_OSV)
         w("  Ratio of unique components to OSV vulnerability entries for this ecosystem:")
         w("    Comp/OSV = Components / OSV-Vulns")
         w("  This metric indicates component diversity relative to the number of vulnerabilities.")
         w()
-        w("CVE/OSV")
+        w(_COL_CVE_OSV)
         w("  Ratio of CVE-backed findings to OSV vulnerability entries:")
         w("    CVE/OSV = CVE-Findings / OSV-Vulns")
         w("  Values below 1 indicate that multiple OSV advisories map to the same CVE.")
@@ -650,8 +662,3 @@ def write_statistics(
             "per-ecosystem target accordingly."
         )
         w()
-
-
-
-
-

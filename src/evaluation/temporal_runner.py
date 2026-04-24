@@ -1,4 +1,3 @@
-
 """Run repeated multi-tool evaluations and aggregate the resulting metrics.
 
 This module orchestrates repeated evaluation runs over a fixed ground-truth
@@ -11,6 +10,7 @@ Primary outputs include JSON summaries, LaTeX tables, plain-text summaries,
 plots, and a run-level status file that can be archived together with the
 experiment artifacts.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -95,8 +95,7 @@ def hash_findings(findings: Iterable[Finding]) -> str:
     formatting differences.
     """
     payload = sorted(
-        [f.ecosystem, f.component, f.version, f.cve or f.osv_id or ""]
-        for f in findings
+        [f.ecosystem, f.component, f.version, f.cve or f.osv_id or ""] for f in findings
     )
     encoded = json.dumps(
         payload,
@@ -210,10 +209,7 @@ def extract_repeat_metric_runs(
     only the nested ``per_ecosystem`` metric structures expected by the aggregation
     functions.
     """
-    return [
-        {tool: runs[idx][tool]["metrics"] for tool in tools}
-        for idx in range(len(runs))
-    ]
+    return [{tool: runs[idx][tool]["metrics"] for tool in tools} for idx in range(len(runs))]
 
 
 def collapse_repeat_metrics(
@@ -270,7 +266,9 @@ def summarize_tool_metrics(agg: dict[str, Any]) -> list[dict[str, Any]]:
             continue
 
         mean_recall = sum(agg[tool][eco]["Recall"]["mean"] for eco in ecosystems) / len(ecosystems)
-        mean_overlap = sum(agg[tool][eco]["Overlap"]["mean"] for eco in ecosystems) / len(ecosystems)
+        mean_overlap = sum(agg[tool][eco]["Overlap"]["mean"] for eco in ecosystems) / len(
+            ecosystems
+        )
         total_tp = sum(agg[tool][eco]["TP"]["mean"] for eco in ecosystems)
         total_fp = sum(agg[tool][eco]["FP"]["mean"] for eco in ecosystems)
         total_fn = sum(agg[tool][eco]["FN"]["mean"] for eco in ecosystems)
@@ -437,7 +435,7 @@ def run_temporal(gt_path: str, sbom_path: str | None, output_dir: str) -> None:
 
         for tool in tools:
             tool_dir = tool_artifact_dir(run_dir, repeat_idx, tool)
-            local_gt, local_sbom = prepare_tool_inputs(tool_dir, gt_path, sbom)
+            local_gt, _ = prepare_tool_inputs(tool_dir, gt_path, sbom)
 
             with tool_output_environment(tool_dir):
                 with working_directory(tool_dir):
@@ -564,8 +562,7 @@ def run_temporal(gt_path: str, sbom_path: str | None, output_dir: str) -> None:
         "tool_count": len(tools),
         "tools": tools,
         "repeat_hash_stability": {
-            tool: len({row[tool] for row in repeat_hashes}) == 1
-            for tool in tools
+            tool: len({row[tool] for row in repeat_hashes}) == 1 for tool in tools
         },
         "outputs": {
             "results_json": "experimental_results.json",

@@ -55,9 +55,7 @@ class TestFPHeuristics:
 # --------------------------------------------------------------
 class TestSignificance:
     def test_detection_matrix_consistent(self):
-        m, tools = build_detection_matrix_from_vectors(
-            {"a": [1, 0, 1], "b": [0, 0, 1]}
-        )
+        m, tools = build_detection_matrix_from_vectors({"a": [1, 0, 1], "b": [0, 0, 1]})
         assert tools == ["a", "b"]
         assert m.shape == (3, 2)
 
@@ -118,7 +116,11 @@ class TestToolFindings:
         fp = [_f(component="a", ecosystem="npm")]
         fn = [_f(component="b", version="1.0")]
         out = analyze_tool_findings(
-            ground_truth=gt, tool_findings=tp + fp, tp=tp, fp=fp, fn=fn,
+            ground_truth=gt,
+            tool_findings=tp + fp,
+            tp=tp,
+            fp=fp,
+            fn=fn,
         )
         assert "by_ecosystem" in out and "by_component" in out
         assert len(out["top_fp_components"]) >= 1
@@ -173,16 +175,20 @@ class TestStatistics:
     def test_write_latex_stats(self, tmp_path: Path):
         agg = aggregate([_make_run()])
         add_confidence_intervals(agg)
-        gt_summary = {"pypi": {"Components": 5, "Vulnerabilities": 10, "CVEs": 8},
-                      "npm": {"Components": 3, "Vulnerabilities": 5, "CVEs": 5}}
+        gt_summary = {
+            "pypi": {"Components": 5, "Vulnerabilities": 10, "CVEs": 8},
+            "npm": {"Components": 3, "Vulnerabilities": 5, "CVEs": 5},
+        }
         out = tmp_path / "stats.tex"
         write_latex_stats(agg, gt_summary, out, markers={"osv": "*"})
         assert "\\textbf{TOTAL}" in out.read_text()
 
     def test_write_ecosystem_summary(self, tmp_path: Path):
         agg = aggregate([_make_run()])
-        gt_summary = {"pypi": {"Components": 5, "Vulnerabilities": 10, "CVEs": 8},
-                      "npm": {"Components": 3, "Vulnerabilities": 5, "CVEs": 5}}
+        gt_summary = {
+            "pypi": {"Components": 5, "Vulnerabilities": 10, "CVEs": 8},
+            "npm": {"Components": 3, "Vulnerabilities": 5, "CVEs": 5},
+        }
         out = tmp_path / "eco.tex"
         write_ecosystem_summary_table(agg, gt_summary, out)
         assert "Ecosystem" in out.read_text()

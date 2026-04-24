@@ -47,7 +47,7 @@ def build_tool_comparison_summary(agg: dict) -> dict:
     pairwise = []
     tools = list(tool_summary.keys())
     for i, tool_a in enumerate(tools):
-        for tool_b in tools[i + 1:]:
+        for tool_b in tools[i + 1 :]:
             a = tool_summary[tool_a]
             b = tool_summary[tool_b]
             pairwise.append(

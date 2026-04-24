@@ -7,11 +7,13 @@ from evaluation.core.model import Finding
 log = logging.getLogger("evaluation.report.text")
 
 LINE = "-" * 119
+_SECTION_SEP = "---------------------------------\n"
 
 
 # ============================================================
 # PUBLIC API — MUST STAY STABLE
 # ============================================================
+
 
 def write_report(
     *,
@@ -25,13 +27,10 @@ def write_report(
     ground_truth,
     api_stats=None,
 ):
-
     from datetime import datetime
     from pathlib import Path
 
-    out_path = Path(input_csv).with_name(
-        f"{Path(input_csv).stem}_{tool_name}_evaluation.txt"
-    )
+    out_path = Path(input_csv).with_name(f"{Path(input_csv).stem}_{tool_name}_evaluation.txt")
 
     created_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     title = f"{tool_name} Evaluation Report ({created_at})"
@@ -83,7 +82,6 @@ def write_report(
         # API Access
         # ========================================================
         _write_api_access_statistics(f, api_stats)
-
 
         # ========================================================
         # GROUND TRUTH SUMMARY (OSV-centric)
@@ -161,11 +159,10 @@ def write_report(
         f.write("\n=== End of report ===\n")
 
 
-
-
 # ============================================================
 # GLOBAL SUMMARIES
 # ============================================================
+
 
 def _write_global_summary(
     f,
@@ -195,8 +192,6 @@ def _write_global_summary(
     f.write(f"Overlap Rate                           : {overlap:7.3f}\n\n")
 
 
-
-
 def _write_ground_truth_summary(f, *, ground_truth):
     LABEL = 42
     INT = 7
@@ -208,13 +203,9 @@ def _write_ground_truth_summary(f, *, ground_truth):
     def lf(label, v):
         f.write(f"{label:<{LABEL}} : {v:>{FLT}.3f}\n")
 
-    components = {
-        (g.ecosystem, g.component, g.version)
-        for g in ground_truth
-    }
+    components = {(g.ecosystem, g.component, g.version) for g in ground_truth}
     osv_entries = {
-        (g.ecosystem, g.component, g.version, g.osv_id)
-        for g in ground_truth if g.osv_id
+        (g.ecosystem, g.component, g.version, g.osv_id) for g in ground_truth if g.osv_id
     }
     cves = {g.cve for g in ground_truth if g.cve}
 
@@ -222,7 +213,7 @@ def _write_ground_truth_summary(f, *, ground_truth):
 
     f.write("\n\n")
     f.write("Ground Truth Summary (OSV-centric)\n")
-    f.write("---------------------------------\n")
+    f.write(_SECTION_SEP)
     li("Unique Components", len(components))
     li("OSV vulnerability entries", len(osv_entries))
     li("Unique CVE identifiers", len(cves))
@@ -233,6 +224,7 @@ def _write_ground_truth_summary(f, *, ground_truth):
 # ============================================================
 # PER-ECOSYSTEM STATISTICS
 # ============================================================
+
 
 def _write_per_ecosystem_statistics(
     f,
@@ -432,9 +424,7 @@ def _write_per_ecosystem_statistics(
     total_recall = total_tp_sum / total_vulns if total_vulns > 0 else 0.0
     total_recall_exact = total_tp_exact / total_vulns if total_vulns > 0 else 0.0
     total_overlap = (
-        total_tp_sum / (total_tp_sum + total_fp_sum)
-        if (total_tp_sum + total_fp_sum) > 0
-        else 0.0
+        total_tp_sum / (total_tp_sum + total_fp_sum) if (total_tp_sum + total_fp_sum) > 0 else 0.0
     )
 
     f.write(line + "\n")
@@ -460,11 +450,10 @@ def _write_per_ecosystem_statistics(
     )
 
 
-
-
 # ============================================================
 # LIST OUTPUT
 # ============================================================
+
 
 def _write_list(
     f,
@@ -480,14 +469,12 @@ def _write_list(
 
     if include_tp_type:
         f.write(
-            f"Ecosystem  | {'Component':<{comp_w}} | Version        | "
-            "CVE-ID          | OSV-ID               | TP-Type  | Description\n"
+            f"Ecosystem  | {'Component':<{comp_w}} | Version        | CVE-ID          | OSV-ID               | TP-Type  | Description\n"
         )
         f.write("-" * (comp_w + 145) + "\n")
     else:
         f.write(
-            f"Ecosystem  | {'Component':<{comp_w}} | Version        | "
-            "CVE-ID          | OSV-ID               | Description\n"
+            f"Ecosystem  | {'Component':<{comp_w}} | Version        | CVE-ID          | OSV-ID               | Description\n"
         )
         f.write("-" * (comp_w + 125) + "\n")
 
@@ -516,7 +503,6 @@ def _write_list(
             )
 
 
-
 def _write_false_positives_table(f, fp):
     f.write("\n\n")
     count = len(fp)
@@ -528,8 +514,7 @@ def _write_false_positives_table(f, fp):
     comp_w = _component_col_width(fp)
 
     f.write(
-        f"Ecosystem  | {'Component':<{comp_w}} | Version        | "
-        "CVE-ID          | OSV-ID               | FP-Class  | Description\n"
+        f"Ecosystem  | {'Component':<{comp_w}} | Version        | CVE-ID          | OSV-ID               | FP-Class  | Description\n"
     )
     f.write("-" * (comp_w + 111) + "\n")
 
@@ -547,14 +532,8 @@ def _write_false_positives_table(f, fp):
         )
 
 
-
-
 def _fn_class_lookup(fn_stats):
-    return {
-        id(g): cls.upper()
-        for cls, lst in fn_stats.items()
-        for g in lst
-    }
+    return {id(g): cls.upper() for cls, lst in fn_stats.items() for g in lst}
 
 
 def _write_false_negatives_table(f, fn, fn_stats):
@@ -569,8 +548,7 @@ def _write_false_negatives_table(f, fn, fn_stats):
     comp_w = _component_col_width(fn)
 
     f.write(
-        f"Ecosystem  | {'Component':<{comp_w}} | Version        | "
-        "CVE-ID          | OSV-ID               | FN-Class  | Description\n"
+        f"Ecosystem  | {'Component':<{comp_w}} | Version        | CVE-ID          | OSV-ID               | FN-Class  | Description\n"
     )
     f.write("-" * (comp_w + 111) + "\n")
 
@@ -585,7 +563,6 @@ def _write_false_negatives_table(f, fn, fn_stats):
             f"{fn_class.get(id(g), 'FN_TRUE'):<9} | "
             f"{(g.description or '')[:60]}\n"
         )
-
 
 
 def _write_tool_findings_analysis(
@@ -616,30 +593,25 @@ def _write_tool_findings_analysis(
     eco_fn = sorted(by_ecosystem.items(), key=lambda x: x[1]["FN"], reverse=True)
 
     f.write("Tool Findings Analysis (diagnostic)\n")
-    f.write("---------------------------------\n")
+    f.write(_SECTION_SEP)
 
     f.write("Top-5 components with most False Positives\n")
     for (eco, comp), s in top_fp:
         f.write(
-            f"- {eco:<8} | {comp:<35} | "
-            f"FP={s['FP']:>3} | TP={s['TP']:>3} | FN={s['FN']:>3}\n"
+            f"- {eco:<8} | {comp:<35} | " f"FP={s['FP']:>3} | TP={s['TP']:>3} | FN={s['FN']:>3}\n"
         )
     f.write("\n")
 
     f.write("Top-5 components with most False Negatives\n")
     for (eco, comp), s in top_fn:
         f.write(
-            f"- {eco:<8} | {comp:<35} | "
-            f"FN={s['FN']:>3} | TP={s['TP']:>3} | FP={s['FP']:>3}\n"
+            f"- {eco:<8} | {comp:<35} | " f"FN={s['FN']:>3} | TP={s['TP']:>3} | FP={s['FP']:>3}\n"
         )
     f.write("\n")
 
     f.write("Ecosystems ranked by False Negatives\n")
     for eco, s in eco_fn:
-        f.write(
-            f"- {eco:<8} | "
-            f"FN={s['FN']:>3} | TP={s['TP']:>3} | FP={s['FP']:>3}\n"
-        )
+        f.write(f"- {eco:<8} | " f"FN={s['FN']:>3} | TP={s['TP']:>3} | FP={s['FP']:>3}\n")
     f.write("\n")
 
 
@@ -672,11 +644,16 @@ def _write_request_stats(f, request_stats) -> None:
     #   "max_ms": 1200.0,
     # }
     for k in [
-         "requests_total", "errors_total",
-        "min_ms", "avg_ms", "p50_ms", "p95_ms", "max_ms",
+        "requests_total",
+        "errors_total",
+        "min_ms",
+        "avg_ms",
+        "p50_ms",
+        "p95_ms",
+        "max_ms",
     ]:
         if k in request_stats:
-                f.write(f"{k:<22}: {request_stats[k]}\n")
+            f.write(f"{k:<22}: {request_stats[k]}\n")
 
 
 def _write_api_access_statistics(f, api_stats) -> None:
@@ -684,10 +661,8 @@ def _write_api_access_statistics(f, api_stats) -> None:
         return
 
     f.write("\n\nAPI access statistics (evaluation)\n")
-    f.write("---------------------------------\n")
-    f.write(
-        "API              | Calls | Total Time (ms) | Avg Time (ms)\n"
-    )
+    f.write(_SECTION_SEP)
+    f.write("API              | Calls | Total Time (ms) | Avg Time (ms)\n")
     f.write("-" * 58 + "\n")
 
     for api, s in sorted(api_stats.items()):
@@ -697,6 +672,7 @@ def _write_api_access_statistics(f, api_stats) -> None:
             f"{s['total_ms']:>15.2f} | "
             f"{s['avg_ms']:>13.2f}\n"
         )
+
 
 def _component_col_width(rows, min_width: int = 10) -> int:
     """

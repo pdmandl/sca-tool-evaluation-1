@@ -36,15 +36,10 @@ class TrivyAdapter(VulnerabilityToolAdapter):
         self.enabled = True
 
         self.trivy_bin = (
-            env.get("TRIVY_BIN")
-            or os.environ.get("TRIVY_BIN")
-            or "/usr/local/bin/trivy"
+            env.get("TRIVY_BIN") or os.environ.get("TRIVY_BIN") or "/usr/local/bin/trivy"
         )
 
-        self.sbom_file = (
-            env.get("TRIVY_SBOM_FILE")
-            or os.environ.get("TRIVY_SBOM_FILE")
-        )
+        self.sbom_file = env.get("TRIVY_SBOM_FILE") or os.environ.get("TRIVY_SBOM_FILE")
 
         if not self.sbom_file or not Path(self.sbom_file).exists():
             log.warning("Trivy adapter disabled: SBOM file missing")
@@ -169,10 +164,7 @@ class TrivyAdapter(VulnerabilityToolAdapter):
             ):
                 pkg_name = v.get("PkgName")
                 version = v.get("InstalledVersion")
-                purl = (
-                    v.get("PkgIdentifier", {})
-                    .get("PURL")
-                )
+                purl = v.get("PkgIdentifier", {}).get("PURL")
 
                 if not pkg_name or not version or not purl:
                     continue
@@ -226,7 +218,6 @@ class TrivyAdapter(VulnerabilityToolAdapter):
         self,
         vuln: Dict[str, Any],
     ) -> Tuple[Optional[str], Optional[str]]:
-
         vuln_id = vuln.get("VulnerabilityID") or ""
 
         cve = None
@@ -254,7 +245,6 @@ class TrivyAdapter(VulnerabilityToolAdapter):
         self,
         vuln: Dict[str, Any],
     ) -> Optional[str]:
-
         fixed = vuln.get("FixedVersion")
         if fixed:
             return f"< {fixed}"

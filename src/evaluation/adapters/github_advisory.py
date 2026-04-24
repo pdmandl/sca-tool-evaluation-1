@@ -29,6 +29,7 @@ class RangeResult(Enum):
 # GitHub ecosystem mapping (GraphQL enum)
 # ------------------------------------------------------------
 
+
 def _map_github_ecosystem(gt_ecosystem: str) -> Optional[str]:
     """
     GitHub GraphQL enum values for SecurityAdvisoryEcosystem are uppercase.
@@ -50,6 +51,7 @@ def _map_github_ecosystem(gt_ecosystem: str) -> Optional[str]:
 # Range normalization & evaluation (NO fuzzy matching)
 # ------------------------------------------------------------
 
+
 def _normalize_range_expr(expr: str) -> str:
     s = (expr or "").strip()
     if not s:
@@ -60,23 +62,25 @@ def _normalize_range_expr(expr: str) -> str:
     return s
 
 
-_MAVEN_RANGE_RE = re.compile(r"^\s*([\[\(])\s*([^,]*)\s*,\s*([^\]\)]*)\s*([\]\)])\s*$")
+_MAVEN_RANGE_RE = re.compile(r"^([\[\(])([^,]*),([^\]\)]*)([\]\)])$")
 
 
-def _try_parse_maven_style_range(range_expr: str) -> Optional[Tuple[Optional[str], bool, Optional[str], bool]]:
+def _try_parse_maven_style_range(
+    range_expr: str,
+) -> Optional[Tuple[Optional[str], bool, Optional[str], bool]]:
     """
     Parse Maven/NuGet style: [1.0,2.0) / (,1.2.3] / [1.0,)
     Returns: (lower, lower_inclusive, upper, upper_inclusive) or None if not matched.
     """
-    m = _MAVEN_RANGE_RE.match(range_expr or "")
+    m = _MAVEN_RANGE_RE.match((range_expr or "").strip())
     if not m:
         return None
 
     l_br, lower, upper, r_br = m.group(1), m.group(2).strip(), m.group(3).strip(), m.group(4)
     lower_v = lower if lower else None
     upper_v = upper if upper else None
-    lower_inc = (l_br == "[")
-    upper_inc = (r_br == "]")
+    lower_inc = l_br == "["
+    upper_inc = r_br == "]"
     return lower_v, lower_inc, upper_v, upper_inc
 
 
@@ -161,6 +165,7 @@ def version_in_range(ecosystem: str, version: str, range_expr: Optional[str]) ->
 # Adapter
 # ------------------------------------------------------------
 
+
 class GitHubAdvisoryAdapter(VulnerabilityToolAdapter):
     """
     GitHub Advisory Database Adapter.
@@ -184,10 +189,12 @@ class GitHubAdvisoryAdapter(VulnerabilityToolAdapter):
             )
 
         self._session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {self._token}",
-            "Accept": "application/vnd.github+json",
-        })
+        self._session.headers.update(
+            {
+                "Authorization": f"Bearer {self._token}",
+                "Accept": "application/vnd.github+json",
+            }
+        )
 
         log.info("Initialized adapters: GitHub Advisory Database")
 
@@ -207,10 +214,7 @@ class GitHubAdvisoryAdapter(VulnerabilityToolAdapter):
     def load_findings(self) -> List[Finding]:
         rows: List[Finding] = []
 
-        components = sorted({
-            (f.ecosystem, f.component, f.version)
-            for f in self.gt
-        })
+        components = sorted({(f.ecosystem, f.component, f.version) for f in self.gt})
 
         log.info(
             "Querying GitHub Advisory DB for %d unique components",
@@ -237,13 +241,12 @@ class GitHubAdvisoryAdapter(VulnerabilityToolAdapter):
     # ------------------------------------------------------------
 
     def load_findings_for_component(
-            self,
-            *,
-            ecosystem: str,
-            component: str,
-            version: str,
+        self,
+        *,
+        ecosystem: str,
+        component: str,
+        version: str,
     ) -> List[Finding]:
-
         eco_cfg = ECOSYSTEMS.get(ecosystem)
         if not eco_cfg or not eco_cfg.github:
             return []
@@ -365,11 +368,7 @@ class GitHubAdvisoryAdapter(VulnerabilityToolAdapter):
             )
             return []
 
-        nodes = (
-            data.get("data", {})
-            .get("securityVulnerabilities", {})
-            .get("nodes", [])
-        )
+        nodes = data.get("data", {}).get("securityVulnerabilities", {}).get("nodes", [])
 
         result: List[Dict[str, Any]] = []
         for n in nodes:

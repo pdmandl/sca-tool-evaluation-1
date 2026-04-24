@@ -47,13 +47,15 @@ def balance_rows_by_vulnerability_deterministic(rows, ecosystems, strategy="min"
                     str(r.get("cve") or ""),
                 ),
             )
-            ordered.append((
-                len(items_sorted),
-                comp_counter[comp],
-                comp.lower(),
-                str(ver),
-                deque(items_sorted),
-            ))
+            ordered.append(
+                (
+                    len(items_sorted),
+                    comp_counter[comp],
+                    comp.lower(),
+                    str(ver),
+                    deque(items_sorted),
+                )
+            )
 
         ordered.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
 

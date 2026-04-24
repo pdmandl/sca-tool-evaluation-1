@@ -34,7 +34,7 @@
         │                       ▼                           │
         │   ┌───────────────────────────────────────────┐   │
         │   │            Evaluation Engine              │   │
-        │   │      TP / FP / FN Computation             │   │
+        │   │  TP / FP<sub>GT</sub> / FN Computation          │   │
         │   └───────────────────┬───────────────────────┘   │
         │                       │                           │
         │                       ▼                           │
@@ -150,13 +150,13 @@ A finding without an FP-Class is considered **heuristically correct**.
 | Metric | Meaning |
 |------|----------|
 | TP | True Positives |
-| FP | False Positives |
+| FP<sub>GT</sub> | False Positives (ground-truth-relative) |
 | FN | False Negatives |
 
 Derived:
 
 - Recall = TP / (TP + FN)
-- Overlap Rate = TP / (TP + FP)
+- Overlap Rate = TP / (TP + FP<sub>GT</sub>)
 
 ---
 
@@ -208,7 +208,7 @@ These metrics are **only produced** when the adapter supports an FP heuristic.
 
 ## 8. Tables in Detail
 
-### 8.1 False Positives (tool findings not in Ground Truth)
+### 8.1 FP<sub>GT</sub> — False Positives (tool findings not in Ground Truth)
 
 - Reported by the tool
 - Not present in the ground truth
@@ -249,7 +249,7 @@ This table is central to evaluating the heuristic.
 
 ## 9. Methodological Clarification
 
-- The ground truth decides TP / FP / FN
+- The ground truth decides TP / FP<sub>GT</sub> / FN
 - The heuristic decides the flagging
 - Both are kept **strictly separate**
 

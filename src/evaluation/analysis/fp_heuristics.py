@@ -6,12 +6,14 @@ from evaluation.core.model import Finding
 # Heuristic quality metrics
 # ------------------------------------------------------------
 
+
 def _is_heuristically_marked_fp(f: Finding) -> bool:
     """
     A finding is considered 'heuristically marked' if the adapters/tool
     attached fp_class (or fp_score/fp_rules). We use fp_class as the primary flag.
     """
     return bool(getattr(f, "fp_class", None))
+
 
 def compute_fp_heuristic_quality(
     tp: List[Finding],

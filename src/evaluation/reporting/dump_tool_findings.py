@@ -21,6 +21,7 @@ log = logging.getLogger("dump_tool_findings")
 # Dump tool findings into file
 # ------------------------------------------------------------
 
+
 def dump_tool_findings_csv(
     *,
     tool_name: str,
@@ -38,15 +39,11 @@ def dump_tool_findings_csv(
 
     log = logging.getLogger("evaluation.dump")
 
-    tool_id = tool_name.lower().replace(" ", "-")
     gt_path = Path(ground_truth_csv)
-
 
     tool_id = tool_file_id(tool_name)
 
-    out_path = gt_path.with_name(
-        f"{gt_path.stem}_{tool_id}_evaluation_findings.csv"
-    )
+    out_path = gt_path.with_name(f"{gt_path.stem}_{tool_id}_evaluation_findings.csv")
 
     with out_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
@@ -64,15 +61,17 @@ def dump_tool_findings_csv(
         writer.writeheader()
 
         for t in tool_findings:
-            writer.writerow({
-                "ecosystem": t.ecosystem,
-                "component_name": t.component,
-                "component_version": t.version,
-                "vulnerability_id": t.osv_id or "-",
-                "cve": t.cve or "-",
-                "vulnerability_description": (t.description or "").strip(),
-                "is_vulnerable": True,
-            })
+            writer.writerow(
+                {
+                    "ecosystem": t.ecosystem,
+                    "component_name": t.component,
+                    "component_version": t.version,
+                    "vulnerability_id": t.osv_id or "-",
+                    "cve": t.cve or "-",
+                    "vulnerability_description": (t.description or "").strip(),
+                    "is_vulnerable": True,
+                }
+            )
 
     log.info("Dumped %d %s findings to %s", len(tool_findings), tool_name, out_path)
     return out_path

@@ -35,9 +35,7 @@ TARGET_VULNS_PER_ECOSYSTEM = env_int(
     None,
 )
 
-EARLY_STOP_ON_TARGET_VULNS = bool(
-    env_int("EARLY_STOP_ON_TARGET_VULNS", 1)
-)
+EARLY_STOP_ON_TARGET_VULNS = bool(env_int("EARLY_STOP_ON_TARGET_VULNS", 1))
 
 # --------------------------------------------------
 # This is a curated list of popular and relevant
@@ -1152,33 +1150,21 @@ SEARCH_GEO_AND_ANALYTICS = [
 # ------------------------------------------------------------
 NUGET_GROUND_TRUTH_PACKAGES = (
     WEB_MIDDLEWARE_AND_APIS
-    +
-    SECURITY_IDENTITY_AND_CRYPTO
-    +
-    DATA_DATABASE_AND_ORM
-    +
-    MESSAGING_JOBS_AND_DISTRIBUTED_SYSTEMS
-    +
-    LOGGING_MONITORING_AND_OBSERVABILITY
-    +
-    CLOUD_AND_PLATFORM_SDKS
-    +
-    SERIALIZATION_TEXT_AND_CONTENT
-    +
-    DOCUMENTS_REPORTING_AND_MEDIA
-    +
-    NETWORKING_RPC_AND_PROTOCOLS
-    +
-    DEPENDENCY_INJECTION_INFRASTRUCTURE_AND_UTILS
-    +
-    BUILD_TOOLING_AND_CLI
-    +
-    TESTING_AND_QUALITY
-    +
-    UI_AUTOMATION_AND_CLIENTS
-    +
-    SEARCH_GEO_AND_ANALYTICS
+    + SECURITY_IDENTITY_AND_CRYPTO
+    + DATA_DATABASE_AND_ORM
+    + MESSAGING_JOBS_AND_DISTRIBUTED_SYSTEMS
+    + LOGGING_MONITORING_AND_OBSERVABILITY
+    + CLOUD_AND_PLATFORM_SDKS
+    + SERIALIZATION_TEXT_AND_CONTENT
+    + DOCUMENTS_REPORTING_AND_MEDIA
+    + NETWORKING_RPC_AND_PROTOCOLS
+    + DEPENDENCY_INJECTION_INFRASTRUCTURE_AND_UTILS
+    + BUILD_TOOLING_AND_CLI
+    + TESTING_AND_QUALITY
+    + UI_AUTOMATION_AND_CLIENTS
+    + SEARCH_GEO_AND_ANALYTICS
 )
+
 
 # ------------------------------------------------------------
 # Validation
@@ -1195,13 +1181,17 @@ def _validate_nuget_package_universe(expected_size: int = 500) -> None:
         raise ValueError(f"Duplicate NuGet packages detected: {sorted(set(duplicates))}")
 
     if len(NUGET_GROUND_TRUTH_PACKAGES) != expected_size:
-        raise ValueError(f"Expected {expected_size} NuGet packages, got {len(NUGET_GROUND_TRUTH_PACKAGES)}")
+        raise ValueError(
+            f"Expected {expected_size} NuGet packages, got {len(NUGET_GROUND_TRUTH_PACKAGES)}"
+        )
+
 
 _validate_nuget_package_universe()
 
 # --------------------------------------------------
 # Helpers
 # --------------------------------------------------
+
 
 def _fetch_nuget_versions_with_dates(
     pkg: str,
@@ -1210,10 +1200,7 @@ def _fetch_nuget_versions_with_dates(
     Fetch stable NuGet versions together with their published date.
     Versions without a published timestamp are discarded.
     """
-    url = (
-        f"https://api.nuget.org/v3/registration5-semver1/"
-        f"{pkg.lower()}/index.json"
-    )
+    url = f"https://api.nuget.org/v3/registration5-semver1/{pkg.lower()}/index.json"
 
     try:
         data = requests.get(url, timeout=30).json()
@@ -1236,14 +1223,13 @@ def _fetch_nuget_versions_with_dates(
                 if pv.is_prerelease or pv.is_devrelease:
                     continue
 
-                published = datetime.fromisoformat(
-                    pub.replace("Z", "+00:00")
-                )
+                published = datetime.fromisoformat(pub.replace("Z", "+00:00"))
                 out.append((ver, published))
             except (InvalidVersion, ValueError):
                 continue
 
     return sorted(out, key=lambda x: Version(x[0]), reverse=True)
+
 
 def _fetch_json(url: str) -> Optional[dict]:
     try:
@@ -1296,10 +1282,7 @@ def _sample_evenly(
         return [versions[-1]]
 
     max_idx = len(versions) - 1
-    raw_indices = [
-        round(k * max_idx / (limit - 1))
-        for k in range(limit)
-    ]
+    raw_indices = [round(k * max_idx / (limit - 1)) for k in range(limit)]
 
     seen = set()
     indices = []
@@ -1311,10 +1294,10 @@ def _sample_evenly(
     return [versions[idx] for idx in indices]
 
 
-
 # --------------------------------------------------
 # Collector
 # --------------------------------------------------
+
 
 def collect_nuget(
     samples: Optional[int],
@@ -1322,7 +1305,6 @@ def collect_nuget(
     end_date: Optional[str] = None,
     osv_cache: Dict[Tuple[str, str, str], Dict[str, Any]] = None,
 ) -> List[Dict]:
-
     start_dt = parse_iso_date(start_date)
     end_dt = parse_iso_date(end_date)
 
@@ -1429,15 +1411,17 @@ def collect_nuget(
                 aliases = vuln.get("aliases") or []
                 cve = next((a for a in aliases if a.startswith("CVE-")), None)
 
-                rows.append({
-                    "ecosystem": "nuget",
-                    "component_name": pkg,
-                    "component_version": version,
-                    "purl": f"pkg:nuget/{pkg}@{version}",
-                    "vulnerability_id": osv_id,
-                    "cve": cve,
-                    "is_vulnerable": True,
-                })
+                rows.append(
+                    {
+                        "ecosystem": "nuget",
+                        "component_name": pkg,
+                        "component_version": version,
+                        "purl": f"pkg:nuget/{pkg}@{version}",
+                        "vulnerability_id": osv_id,
+                        "cve": cve,
+                        "is_vulnerable": True,
+                    }
+                )
 
                 component_vulns += 1
                 total_vulns += 1

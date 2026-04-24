@@ -81,10 +81,9 @@ class DependencyTrackAdapter(VulnerabilityToolAdapter):
         version: str,
     ) -> List[Finding]:
         return [
-            f for f in self.load_findings()
-            if f.ecosystem == ecosystem
-            and f.component == component
-            and f.version == version
+            f
+            for f in self.load_findings()
+            if f.ecosystem == ecosystem and f.component == component and f.version == version
         ]
 
     # =========================================================
@@ -103,9 +102,7 @@ class DependencyTrackAdapter(VulnerabilityToolAdapter):
 
         data = r.json()
         if not data:
-            raise RuntimeError(
-                f"Dependency-Track project not found or not accessible: {name}"
-            )
+            raise RuntimeError(f"Dependency-Track project not found or not accessible: {name}")
 
         return data[0]["uuid"]
 
@@ -167,7 +164,7 @@ class DependencyTrackAdapter(VulnerabilityToolAdapter):
                 if not purl_l.startswith(prefix):
                     continue
 
-                nv = purl[len(prefix):]
+                nv = purl[len(prefix) :]
                 if "@" not in nv:
                     continue
 
@@ -207,14 +204,9 @@ class DependencyTrackAdapter(VulnerabilityToolAdapter):
                     continue
                 seen.add(key)
 
-                affected_range = (
-                    vuln.get("vulnerableVersions")
-                    or vuln.get("affectedVersionRange")
-                )
+                affected_range = vuln.get("vulnerableVersions") or vuln.get("affectedVersionRange")
 
-                description = (
-                    vuln.get("description") or ""
-                ).split("\n")[0].strip()
+                description = (vuln.get("description") or "").split("\n")[0].strip()
 
                 rows.append(
                     Finding(

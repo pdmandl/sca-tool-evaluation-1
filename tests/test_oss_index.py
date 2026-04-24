@@ -1,4 +1,5 @@
 """Tests for OSSIndexAdapter helper methods."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -162,18 +163,28 @@ class TestParseComponentReport:
     def test_basic(self, tmp_path, monkeypatch):
         a = _make(tmp_path, monkeypatch)
         coord_map = {"pkg:pypi/django@3.2": _CoordKey("pypi", "django", "3.2")}
-        data = [{"coordinates": "pkg:pypi/django@3.2", "vulnerabilities": [
-            {"id": "V1", "title": "bad", "description": "", "cve": "CVE-2024-1"},
-        ]}]
+        data = [
+            {
+                "coordinates": "pkg:pypi/django@3.2",
+                "vulnerabilities": [
+                    {"id": "V1", "title": "bad", "description": "", "cve": "CVE-2024-1"},
+                ],
+            }
+        ]
         findings = a._parse_component_report(data, coord_map=coord_map)
         assert len(findings) == 1 and findings[0].cve == "CVE-2024-1"
 
     def test_no_identifier_skipped(self, tmp_path, monkeypatch):
         a = _make(tmp_path, monkeypatch)
         coord_map = {"pkg:pypi/x@1": _CoordKey("pypi", "x", "1")}
-        data = [{"coordinates": "pkg:pypi/x@1", "vulnerabilities": [
-            {"id": "V1", "title": "nop"},
-        ]}]
+        data = [
+            {
+                "coordinates": "pkg:pypi/x@1",
+                "vulnerabilities": [
+                    {"id": "V1", "title": "nop"},
+                ],
+            }
+        ]
         assert a._parse_component_report(data, coord_map=coord_map) == []
 
     def test_not_list_returns_empty(self, tmp_path, monkeypatch):
@@ -182,18 +193,28 @@ class TestParseComponentReport:
 
     def test_best_effort_key_fallback(self, tmp_path, monkeypatch):
         a = _make(tmp_path, monkeypatch)
-        data = [{"coordinates": "pkg:pypi/flask@2.0", "vulnerabilities": [
-            {"cve": "CVE-2024-9"},
-        ]}]
+        data = [
+            {
+                "coordinates": "pkg:pypi/flask@2.0",
+                "vulnerabilities": [
+                    {"cve": "CVE-2024-9"},
+                ],
+            }
+        ]
         findings = a._parse_component_report(data, coord_map={})
         assert len(findings) == 1
 
     def test_coordinate_field_fallback(self, tmp_path, monkeypatch):
         a = _make(tmp_path, monkeypatch)
         coord_map = {"pkg:pypi/numpy@1.0": _CoordKey("pypi", "numpy", "1.0")}
-        data = [{"coordinate": "pkg:pypi/numpy@1.0", "vulnerabilities": [
-            {"cve": "CVE-2024-8"},
-        ]}]
+        data = [
+            {
+                "coordinate": "pkg:pypi/numpy@1.0",
+                "vulnerabilities": [
+                    {"cve": "CVE-2024-8"},
+                ],
+            }
+        ]
         findings = a._parse_component_report(data, coord_map=coord_map)
         assert len(findings) == 1
 
@@ -211,7 +232,9 @@ class TestLoadFindings:
 
     @patch("time.sleep")
     def test_query_401_returns_empty(self, mock_sleep, tmp_path, monkeypatch):
-        gt = [Finding(ecosystem="pypi", component="flask", version="2.0", purl="pkg:pypi/flask@2.0")]
+        gt = [
+            Finding(ecosystem="pypi", component="flask", version="2.0", purl="pkg:pypi/flask@2.0")
+        ]
         a = _make(tmp_path, monkeypatch, gt=gt)
         mock_resp = MagicMock(status_code=401)
         mock_resp.json.return_value = []
@@ -220,13 +243,17 @@ class TestLoadFindings:
 
     @patch("time.sleep")
     def test_query_200_with_findings(self, mock_sleep, tmp_path, monkeypatch):
-        gt = [Finding(ecosystem="pypi", component="flask", version="2.0", purl="pkg:pypi/flask@2.0")]
+        gt = [
+            Finding(ecosystem="pypi", component="flask", version="2.0", purl="pkg:pypi/flask@2.0")
+        ]
         a = _make(tmp_path, monkeypatch, gt=gt)
         mock_resp = MagicMock(status_code=200)
-        mock_resp.json.return_value = [{
-            "coordinates": "pkg:pypi/flask@2.0",
-            "vulnerabilities": [{"cve": "CVE-2024-1"}],
-        }]
+        mock_resp.json.return_value = [
+            {
+                "coordinates": "pkg:pypi/flask@2.0",
+                "vulnerabilities": [{"cve": "CVE-2024-1"}],
+            }
+        ]
         with patch.object(a, "_api_call", return_value=mock_resp):
             findings = a.load_findings()
         assert len(findings) == 1

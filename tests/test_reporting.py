@@ -14,13 +14,21 @@ def _f(**kw):
 class TestToolFindingsTxt:
     def test_writes_file(self, tmp_path: Path):
         findings = [
-            _f(cve="CVE-1", ghsa="GHSA-x", osv_id="OSV-1",
-               affected_version_range=">=1,<2", source="osv"),
+            _f(
+                cve="CVE-1",
+                ghsa="GHSA-x",
+                osv_id="OSV-1",
+                affected_version_range=">=1,<2",
+                source="osv",
+            ),
             _f(component="numpy", version="2.0"),
         ]
         path = write_tool_findings_txt(
-            out_dir=tmp_path, ground_truth_name="gt",
-            tool="osv", run_id="r1", findings=findings,
+            out_dir=tmp_path,
+            ground_truth_name="gt",
+            tool="osv",
+            run_id="r1",
+            findings=findings,
         )
         text = path.read_text()
         assert "Tool Findings" in text
@@ -29,8 +37,11 @@ class TestToolFindingsTxt:
 
     def test_empty_findings(self, tmp_path: Path):
         path = write_tool_findings_txt(
-            out_dir=tmp_path, ground_truth_name="gt",
-            tool="osv", run_id="r1", findings=[],
+            out_dir=tmp_path,
+            ground_truth_name="gt",
+            tool="osv",
+            run_id="r1",
+            findings=[],
         )
         assert path.exists()
 
@@ -41,7 +52,8 @@ class TestDumpToolFindingsCsv:
         gt_csv.write_text("a,b\n1,2\n")
         findings = [_f(cve="CVE-1", osv_id="OSV-1", description="descr")]
         out = dump_tool_findings_csv(
-            tool_name="OSV", tool_findings=findings,
+            tool_name="OSV",
+            tool_findings=findings,
             ground_truth_csv=str(gt_csv),
         )
         assert out.exists()

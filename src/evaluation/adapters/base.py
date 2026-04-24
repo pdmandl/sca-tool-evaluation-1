@@ -89,8 +89,7 @@ class VulnerabilityToolAdapter(ABC):
     # ============================================================
 
     @abstractmethod
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     def supports_fp_heuristic(self) -> bool:
         return False
@@ -102,8 +101,7 @@ class VulnerabilityToolAdapter(ABC):
         ecosystem: str,
         component: str,
         version: str,
-    ) -> List[Finding]:
-        ...
+    ) -> List[Finding]: ...
 
     # ============================================================
     # GENERIC API CALL WRAPPER
@@ -130,9 +128,7 @@ class VulnerabilityToolAdapter(ABC):
             method,
             url,
             params,
-            json.dumps(json_body, ensure_ascii=False, indent=2)
-            if json_body is not None
-            else None,
+            json.dumps(json_body, ensure_ascii=False, indent=2) if json_body is not None else None,
             headers,
             timeout,
         )
@@ -261,7 +257,6 @@ class VulnerabilityToolAdapter(ABC):
         unit: str = "item",
         total: Optional[int] = None,
     ) -> Iterator[T]:
-
         env = os.environ.get("EVAL_PROGRESS", "1").strip().lower()
         enabled = env not in {"0", "false", "no", "off"}
         use_tqdm = enabled and sys.stderr.isatty()

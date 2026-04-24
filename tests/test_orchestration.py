@@ -38,17 +38,23 @@ def _write_gt_csv(path: Path, rows: list[dict]) -> None:
         w = csv.DictWriter(
             f,
             fieldnames=[
-                "ecosystem", "component_name", "component_version",
-                "purl", "cve", "vulnerability_id",
+                "ecosystem",
+                "component_name",
+                "component_version",
+                "purl",
+                "cve",
+                "vulnerability_id",
                 "vulnerability_description",
             ],
         )
         w.writeheader()
         for r in rows:
             base = {
-                "ecosystem": "pypi", "component_name": "x",
+                "ecosystem": "pypi",
+                "component_name": "x",
                 "component_version": "1.0",
-                "purl": "", "cve": "CVE-1",
+                "purl": "",
+                "cve": "CVE-1",
                 "vulnerability_id": "OSV-1",
                 "vulnerability_description": "",
             }
@@ -68,15 +74,20 @@ class TestSnapshot:
         raise AssertionError("expected FileNotFoundError")
 
     def test_find_latest_csv_picks_newest(self, tmp_path: Path):
-        a = tmp_path / "a.csv"; a.write_text("")
-        b = tmp_path / "b.csv"; b.write_text("")
-        import os, time
+        a = tmp_path / "a.csv"
+        a.write_text("")
+        b = tmp_path / "b.csv"
+        b.write_text("")
+        import os
+        import time
+
         time.sleep(0.01)
         os.utime(b, None)
         assert find_latest_csv(tmp_path).name in {"a.csv", "b.csv"}
 
     def test_derive_related_files_missing_sbom(self, tmp_path: Path):
-        csv_p = tmp_path / "x.csv"; csv_p.write_text("")
+        csv_p = tmp_path / "x.csv"
+        csv_p.write_text("")
         try:
             derive_related_files(csv_p)
         except FileNotFoundError:
@@ -84,9 +95,12 @@ class TestSnapshot:
         raise AssertionError("expected FileNotFoundError")
 
     def test_derive_related_files_and_copy(self, tmp_path: Path):
-        csv_p = tmp_path / "x.csv"; csv_p.write_text("c")
-        sbom = tmp_path / "x.sbom.json"; sbom.write_text("{}")
-        stat = tmp_path / "x.stat.txt"; stat.write_text("ok")
+        csv_p = tmp_path / "x.csv"
+        csv_p.write_text("c")
+        sbom = tmp_path / "x.sbom.json"
+        sbom.write_text("{}")
+        stat = tmp_path / "x.stat.txt"
+        stat.write_text("ok")
 
         s_p, st_p = derive_related_files(csv_p)
         assert s_p == sbom and st_p == stat
@@ -98,7 +112,8 @@ class TestSnapshot:
         assert Path(copied["stat"]).exists()
 
     def test_derive_no_stat(self, tmp_path: Path):
-        csv_p = tmp_path / "x.csv"; csv_p.write_text("")
+        csv_p = tmp_path / "x.csv"
+        csv_p.write_text("")
         (tmp_path / "x.sbom.json").write_text("{}")
         _, st = derive_related_files(csv_p)
         assert st is None
@@ -110,6 +125,7 @@ class TestSnapshot:
 class TestCompare:
     def test_expand_difference(self):
         from collections import Counter
+
         a = Counter({"x": 3, "y": 1})
         b = Counter({"x": 1})
         assert expand_difference(a, b) == ["x", "x", "y"]
@@ -147,6 +163,7 @@ class TestCompare:
 class TestDiff:
     def test_finding_to_row_and_key(self):
         from evaluation.core.model import Finding
+
         f = Finding(ecosystem="pypi", component="x", version="1", cve="CVE-1")
         row = finding_to_row(f)
         assert row["vuln_id"] == "CVE-1"
@@ -154,7 +171,9 @@ class TestDiff:
 
     def test_expand_counter_difference(self):
         from collections import Counter
-        a = Counter({"k": 2}); b = Counter({"k": 1})
+
+        a = Counter({"k": 2})
+        b = Counter({"k": 1})
         assert expand_counter_difference(a, b) == ["k"]
         assert expand_counter_difference(b, a) == []
 
@@ -192,12 +211,14 @@ def _make_run():
 class TestAggregateExperiments:
     def test_summarize_tool_metrics(self):
         from evaluation.analysis.statistics import aggregate
+
         agg = aggregate([_make_run()])
         out = summarize_tool_metrics(agg)
         assert "osv" in out and "avg_recall" in out["osv"]
 
     def test_build_tool_comparison_summary(self):
         from evaluation.analysis.statistics import aggregate
+
         agg = aggregate([_make_run()])
         out = build_tool_comparison_summary(agg)
         assert "ranking_by_avg_recall" in out
@@ -205,6 +226,7 @@ class TestAggregateExperiments:
 
     def test_write_tool_comparison_outputs(self, tmp_path: Path):
         from evaluation.analysis.statistics import aggregate
+
         agg = aggregate([_make_run()])
         s = build_tool_comparison_summary(agg)
         write_tool_comparison_outputs(tmp_path, s)

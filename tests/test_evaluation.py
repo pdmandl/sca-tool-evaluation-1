@@ -16,6 +16,7 @@ def _f(**kwargs):
 # version_in_range
 # ------------------------------------------------------------
 
+
 class TestVersionInRange:
     def test_gte_lt_match(self):
         assert version_in_range("1.5.0", ">=1.0.0,<2.0.0") is True
@@ -48,6 +49,7 @@ class TestVersionInRange:
 # evaluate_finding
 # ------------------------------------------------------------
 
+
 class TestEvaluateFinding:
     def test_tp_exact_version_and_cve(self):
         gt = _f(cve="CVE-2021-1", version="1.0.0")
@@ -79,13 +81,12 @@ class TestEvaluateFinding:
 # evaluate_project_centric
 # ------------------------------------------------------------
 
+
 class TestEvaluateProjectCentric:
     def test_tp_exact(self):
         gt = [_f(cve="CVE-1", version="1.0.0")]
         tools = [_f(cve="CVE-1", version="1.0.0")]
-        tp_exact, tp_range, fp, fn = evaluate_project_centric(
-            ground_truth=gt, tool_findings=tools
-        )
+        tp_exact, tp_range, fp, fn = evaluate_project_centric(ground_truth=gt, tool_findings=tools)
         assert len(tp_exact) == 1
         assert tp_range == [] and fp == [] and fn == []
         assert gt[0].match_type == "TP_EXACT"
@@ -93,9 +94,7 @@ class TestEvaluateProjectCentric:
     def test_tp_range(self):
         gt = [_f(cve="CVE-1", version="1.5.0")]
         tools = [_f(cve="CVE-1", version="0.0.0", affected_version_range=">=1.0.0,<2.0.0")]
-        tp_exact, tp_range, fp, fn = evaluate_project_centric(
-            ground_truth=gt, tool_findings=tools
-        )
+        tp_exact, tp_range, fp, fn = evaluate_project_centric(ground_truth=gt, tool_findings=tools)
         assert tp_exact == [] and len(tp_range) == 1 and fn == []
         # The tool finding is used and should not count as FP.
         assert fp == []
@@ -103,9 +102,7 @@ class TestEvaluateProjectCentric:
 
     def test_fn_when_no_tool_finding(self):
         gt = [_f(cve="CVE-1", version="1.0.0")]
-        tp_exact, tp_range, fp, fn = evaluate_project_centric(
-            ground_truth=gt, tool_findings=[]
-        )
+        tp_exact, tp_range, fp, fn = evaluate_project_centric(ground_truth=gt, tool_findings=[])
         assert fn == gt
         assert tp_exact == [] and tp_range == [] and fp == []
 
@@ -113,9 +110,7 @@ class TestEvaluateProjectCentric:
         gt = [_f(cve="CVE-1", version="1.0.0")]
         extra = _f(component="numpy", cve="CVE-9", version="1.0.0")
         tools = [_f(cve="CVE-1", version="1.0.0"), extra]
-        tp_exact, tp_range, fp, fn = evaluate_project_centric(
-            ground_truth=gt, tool_findings=tools
-        )
+        tp_exact, tp_range, fp, fn = evaluate_project_centric(ground_truth=gt, tool_findings=tools)
         assert len(tp_exact) == 1
         assert fp == [extra]
 
@@ -125,7 +120,5 @@ class TestEvaluateProjectCentric:
             _f(cve="CVE-1", version="0.0.0", affected_version_range=">=1.0.0,<2.0.0"),
             _f(cve="CVE-1", version="1.0.0"),
         ]
-        tp_exact, tp_range, fp, fn = evaluate_project_centric(
-            ground_truth=gt, tool_findings=tools
-        )
+        tp_exact, tp_range, fp, fn = evaluate_project_centric(ground_truth=gt, tool_findings=tools)
         assert len(tp_exact) == 1 and tp_range == []

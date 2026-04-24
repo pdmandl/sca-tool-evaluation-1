@@ -21,10 +21,14 @@ class TestNormalizeComponent:
         assert normalize_component("npm", "@Scope/Pkg") == "@scope/pkg"
 
     def test_maven_preserves_group_artifact(self):
-        assert normalize_component("maven", "org.apache:commons-lang3") == "org.apache:commons-lang3"
+        assert (
+            normalize_component("maven", "org.apache:commons-lang3") == "org.apache:commons-lang3"
+        )
 
     def test_maven_slash_converted_to_colon(self):
-        assert normalize_component("maven", "org.apache/commons-lang3") == "org.apache:commons-lang3"
+        assert (
+            normalize_component("maven", "org.apache/commons-lang3") == "org.apache:commons-lang3"
+        )
 
     def test_nuget_preserves_case(self):
         assert normalize_component("nuget", "Newtonsoft.Json") == "Newtonsoft.Json"

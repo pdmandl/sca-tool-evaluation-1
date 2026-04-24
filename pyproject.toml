@@ -50,6 +50,9 @@ Repository = "https://github.com/prcmandl/sca-tool-evaluation"
 Issues = "https://github.com/prcmandl/sca-tool-evaluation/issues"
 
 [tool.poetry]
+name = "sca-tool-evaluation"
+version = "0.1.0"
+description = "Evaluation framework for Software Composition Analysis (SCA) tools using OSV-based ground truth."
 packages = [
     { include = "evaluation", from = "src" },
     { include = "ground_truth_generation", from = "src" }

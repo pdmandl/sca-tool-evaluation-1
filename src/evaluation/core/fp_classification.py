@@ -25,6 +25,7 @@ FP_KEYWORDS = [
 # OSV helper
 # ------------------------------------------------------------
 
+
 def osv_has_cve_for_package(ecosystem: str, package: str, cve: str) -> bool:
     """
     Checks whether a given CVE is listed as an alias of any OSV advisory
@@ -62,9 +63,11 @@ def description_indicates_product(description: str) -> bool:
     d = (description or "").lower()
     return any(k in d for k in FP_KEYWORDS)
 
+
 # ------------------------------------------------------------
 # FP classification
 # ------------------------------------------------------------
+
 
 def classify_fp_candidate(row: dict):
     """
