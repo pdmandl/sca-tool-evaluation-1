@@ -1,10 +1,11 @@
 """
-Tests for the NVD CPE-data completeness diagnostic (walking skeleton).
+Tests for the NVD CPE-data completeness diagnostic.
 
-Covers the classifier seam, the record parser, the report aggregation, the NVD
-adapter's transport (rate limit / retry / tracing, all network-mocked), and the
-runner (CVE de-duplication, denominator policy, report artifact, no Overlap).
-The suite never hits the network.
+Covers the classifier seam (five buckets: NO_CVE / CVE_ABSENT / NO_CPE_CONFIG /
+PRODUCT_MISMATCH / PRODUCT_MATCHED), the record parser, the report aggregation,
+the NVD adapter's transport (rate limit / retry / tracing, all network-mocked),
+and the runner (CVE de-duplication, denominator policy, report artifact, no
+Overlap). The suite never hits the network.
 """
 
 import csv
@@ -17,8 +18,10 @@ from evaluation.adapters.nvd import NvdAdapter
 from evaluation.core.model import Finding
 from evaluation.nvd_completeness.coverage import (
     CVE_ABSENT,
+    NO_CPE_CONFIG,
     NO_CVE,
-    PRESENT,
+    PRODUCT_MATCHED,
+    PRODUCT_MISMATCH,
     classify_nvd_coverage,
     format_coverage_log_line,
 )
@@ -40,33 +43,30 @@ def _obs(ecosystem, component, version, cve):
     return Finding(ecosystem=ecosystem, component=component, version=version, cve=cve)
 
 
-def _nvd_body_present_with_config(cve_id="CVE-2021-1234"):
+def _cpe(vendor, product, version="*"):
+    return f"cpe:2.3:a:{vendor}:{product}:{version}:*:*:*:*:*:*:*"
+
+
+def _body(cve_id="CVE-2021-1234", vendor="acme", product="widget", version="*", **bounds):
+    """
+    A full NVD 2.0 envelope with a single vulnerable cpeMatch.
+
+    ``bounds`` accepts the NVD range keys verbatim, e.g.
+    ``versionEndExcluding="2.0"`` or ``versionStartIncluding="1.0"``.
+    """
+    match = {"vulnerable": True, "criteria": _cpe(vendor, product, version)}
+    match.update(bounds)
     return {
         "version": "2.0",
         "totalResults": 1,
         "vulnerabilities": [
-            {
-                "cve": {
-                    "id": cve_id,
-                    "configurations": [
-                        {
-                            "nodes": [
-                                {
-                                    "cpeMatch": [
-                                        {
-                                            "vulnerable": True,
-                                            "criteria": "cpe:2.3:a:acme:widget:*:*:*:*:*:*:*:*",
-                                            "versionEndExcluding": "2.0",
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ],
-                }
-            }
+            {"cve": {"id": cve_id, "configurations": [{"nodes": [{"cpeMatch": [match]}]}]}}
         ],
     }
+
+
+def _nvd_body_present_with_config(cve_id="CVE-2021-1234"):
+    return _body(cve_id, vendor="acme", product="widget", versionEndExcluding="2.0")
 
 
 def _nvd_body_present_no_config(cve_id="CVE-2021-9999"):
@@ -121,6 +121,14 @@ class TestParseRecord:
         assert node.version is None  # '*' wildcard -> None
         assert node.version_end_excluding == "2.0"
 
+    def test_unwrapped_cve_object_yields_nodes(self):
+        # Already-unwrapped CVE object (no {"vulnerabilities": [...]} envelope).
+        cve_obj = _body(product="widget")["vulnerabilities"][0]["cve"]
+        rec = parse_nvd_record(cve_obj)
+        assert rec is not None
+        assert rec.cve_id == "CVE-2021-1234"
+        assert rec.cpe_nodes and rec.cpe_nodes[0].product == "widget"
+
     def test_present_no_config_yields_empty_nodes(self):
         rec = parse_nvd_record(_nvd_body_present_no_config())
         assert rec is not None
@@ -135,6 +143,40 @@ class TestParseRecord:
         assert parse_nvd_record(None) is None
         assert parse_nvd_record("garbage") is None
         assert parse_nvd_record({"unexpected": True}) is None
+
+    def test_nested_children_flattened(self):
+        body = {
+            "version": "2.0",
+            "vulnerabilities": [
+                {
+                    "cve": {
+                        "id": "CVE-2021-7777",
+                        "configurations": [
+                            {
+                                "nodes": [
+                                    {
+                                        "operator": "AND",
+                                        "children": [
+                                            {
+                                                "cpeMatch": [
+                                                    {
+                                                        "vulnerable": True,
+                                                        "criteria": _cpe("acme", "widget"),
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                    }
+                                ]
+                            }
+                        ],
+                    }
+                }
+            ],
+        }
+        rec = parse_nvd_record(body)
+        assert rec is not None
+        assert [n.product for n in rec.cpe_nodes] == ["widget"]
 
     def test_non_vulnerable_nodes_dropped(self):
         body = _nvd_body_present_with_config()
@@ -160,16 +202,39 @@ class TestClassifier:
         obs = _obs("pypi", "flask", "1.0", "CVE-2021-1234")
         assert classify_nvd_coverage(obs, None) == CVE_ABSENT
 
-    def test_present(self):
-        obs = _obs("pypi", "flask", "1.0", "CVE-2021-1234")
-        rec = parse_nvd_record(_nvd_body_present_with_config())
-        assert classify_nvd_coverage(obs, rec) == PRESENT
-
-    def test_present_even_without_cpe_config(self):
-        # Coarse slice: present-but-no-config is still PRESENT (refined later).
+    def test_no_cpe_config(self):
         obs = _obs("npm", "left-pad", "1.0.0", "CVE-2021-9999")
         rec = parse_nvd_record(_nvd_body_present_no_config())
-        assert classify_nvd_coverage(obs, rec) == PRESENT
+        assert classify_nvd_coverage(obs, rec) == NO_CPE_CONFIG
+
+    def test_product_mismatch(self):
+        # CPE names acme/widget but the component is flask -> wrong product.
+        obs = _obs("pypi", "flask", "1.0", "CVE-2021-1234")
+        rec = parse_nvd_record(_nvd_body_present_with_config())
+        assert classify_nvd_coverage(obs, rec) == PRODUCT_MISMATCH
+
+    def test_product_matched(self):
+        obs = _obs("pypi", "flask", "1.0", "CVE-2021-1234")
+        rec = parse_nvd_record(_body(product="flask"))
+        assert classify_nvd_coverage(obs, rec) == PRODUCT_MATCHED
+
+    def test_product_matched_on_vendor(self):
+        # Component matches the CPE *vendor* even though the product differs.
+        obs = _obs("pypi", "acme", "1.0", "CVE-2021-1234")
+        rec = parse_nvd_record(_body(vendor="acme", product="somethingelse"))
+        assert classify_nvd_coverage(obs, rec) == PRODUCT_MATCHED
+
+    def test_maven_group_artifact_dual_tokens(self):
+        # Maven identity is group:artifact; the artifact segment matches the CPE.
+        obs = _obs("maven", "com.foo:bar", "2.0", "CVE-2021-1234")
+        rec = parse_nvd_record(_body(vendor="foo", product="bar"))
+        assert classify_nvd_coverage(obs, rec) == PRODUCT_MATCHED
+
+    def test_token_canonicalization(self):
+        # CPE product uses '_' where the component uses '-' -> canonical match.
+        obs = _obs("pypi", "spring-framework", "5.0", "CVE-2021-1234")
+        rec = parse_nvd_record(_body(vendor="pivotal", product="spring_framework"))
+        assert classify_nvd_coverage(obs, rec) == PRODUCT_MATCHED
 
     def test_no_cve_takes_precedence_over_record(self):
         # A record present but no CVE on the observation -> NO_CVE wins.
@@ -178,11 +243,11 @@ class TestClassifier:
 
     def test_log_line_is_greppable(self):
         obs = _obs("pypi", "flask", "1.0", "CVE-2021-1234")
-        rec = parse_nvd_record(_nvd_body_present_with_config())
-        line = format_coverage_log_line(obs, PRESENT, rec)
-        assert line.startswith("NVD_COVERAGE | bucket=PRESENT")
+        rec = parse_nvd_record(_body(product="flask"))
+        line = format_coverage_log_line(obs, PRODUCT_MATCHED, rec)
+        assert line.startswith("NVD_COVERAGE | bucket=PRODUCT_MATCHED")
         assert "cve=CVE-2021-1234" in line
-        assert "cpe_nodes=1" in line
+        assert "matched_nodes=1" in line
 
 
 # ------------------------------------------------------------
@@ -196,21 +261,31 @@ class TestReport:
         for eco in DEFAULT_ECOSYSTEMS:
             assert eco in report.per_ecosystem
 
+    def test_extra_ecosystem_appears_alongside_defaults(self):
+        report = aggregate_buckets([(_obs("nuget", "n", "1", "CVE-1"), PRODUCT_MATCHED)])
+        for eco in DEFAULT_ECOSYSTEMS:
+            assert eco in report.per_ecosystem
+        assert "nuget" in report.per_ecosystem
+
+    def test_zero_denominator_ratio_is_zero(self):
+        report = aggregate_buckets([])
+        assert report.product_matched_ratio("pypi") == 0.0
+
     def test_no_cve_stays_in_denominator(self):
         classified = [
-            (_obs("pypi", "a", "1", "CVE-1"), PRESENT),
+            (_obs("pypi", "a", "1", "CVE-1"), PRODUCT_MATCHED),
             (_obs("pypi", "b", "1", None), NO_CVE),
             (_obs("pypi", "c", "1", "CVE-2"), CVE_ABSENT),
         ]
         report = aggregate_buckets(classified)
         assert report.denominator("pypi") == 3
-        assert report.count("pypi", PRESENT) == 1
+        assert report.count("pypi", PRODUCT_MATCHED) == 1
         assert report.count("pypi", NO_CVE) == 1
-        # completeness = PRESENT / denominator (NO_CVE counted in denom)
-        assert report.completeness("pypi") == pytest.approx(1 / 3)
+        # interim ratio = PRODUCT_MATCHED / denominator (NO_CVE counted in denom)
+        assert report.product_matched_ratio("pypi") == pytest.approx(1 / 3)
 
     def test_render_has_metadata_header_and_no_overlap(self):
-        classified = [(_obs("npm", "x", "1", "CVE-1"), PRESENT)]
+        classified = [(_obs("npm", "x", "1", "CVE-1"), PRODUCT_MATCHED)]
         report = aggregate_buckets(
             classified,
             meta={
@@ -224,7 +299,9 @@ class TestReport:
         assert "2026-07-02T00:00:00Z" in text
         assert "nvd_api_version: 2.0" in text
         assert "not reproducible" in text.lower()
-        assert "completeness=" in text
+        assert "product_matched_ratio=" in text
+        # Interim report must not publish a "completeness" figure yet.
+        assert "completeness=" not in text
         # The diagnostic never prints Overlap / detection metrics.
         assert "overlap" not in text.lower()
         assert "recall" not in text.lower()
@@ -404,7 +481,8 @@ class TestRunner:
 
         fake = _FakeAdapter(
             {
-                "CVE-2021-1234": parse_nvd_record(_nvd_body_present_with_config("CVE-2021-1234")),
+                # CPE product 'flask' matches the component -> PRODUCT_MATCHED
+                "CVE-2021-1234": parse_nvd_record(_body("CVE-2021-1234", product="flask")),
                 "CVE-2021-5678": None,  # absent in NVD
             }
         )
@@ -414,8 +492,8 @@ class TestRunner:
         # Exactly one request per unique CVE (2 unique, despite 3 CVE rows).
         assert sorted(fake.calls) == ["CVE-2021-1234", "CVE-2021-5678"]
 
-        # pypi: two PRESENT observations
-        assert report.count("pypi", PRESENT) == 2
+        # pypi: two product-matched observations
+        assert report.count("pypi", PRODUCT_MATCHED) == 2
         assert report.denominator("pypi") == 2
         # npm: one CVE absent
         assert report.count("npm", CVE_ABSENT) == 1

@@ -3,13 +3,17 @@ Per-ecosystem aggregation and rendering of the ``*_nvd_completeness`` report.
 
 The report never enters the head-to-head detection table and never computes
 Overlap. It presents, per ecosystem, the coverage-bucket counts, the denominator,
-and the derived completeness ratio, so a reviewer can reconstruct the figure,
-plus a run-metadata header making the point-in-time / non-reproducible nature
-explicit.
+and a derived ratio, so a reviewer can reconstruct the figure, plus a run-metadata
+header making the point-in-time / non-reproducible nature explicit.
 
-For this walking-skeleton slice completeness is ``PRESENT / total observations``
-in that ecosystem; later slices refine ``PRESENT`` into a version-precise
-covered/uncovered split.
+Buckets (precedence order): ``NO_CVE -> CVE_ABSENT -> NO_CPE_CONFIG ->
+PRODUCT_MISMATCH -> PRODUCT_MATCHED``. Until the version-precise slice lands, the
+report exposes only a ``product_matched_ratio`` (product-matched observations over
+the denominator) and deliberately does **not** publish a "completeness" figure:
+``PRODUCT_MATCHED`` counts product matches regardless of version, so labelling it
+completeness would over-report. The version slice refines ``PRODUCT_MATCHED`` into
+``COVERED`` / ``VERSION_OUT_OF_RANGE`` and restores
+``completeness = COVERED / denominator``.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
-from evaluation.nvd_completeness.coverage import COVERAGE_BUCKETS, COVERED_BUCKET
+from evaluation.nvd_completeness.coverage import COVERAGE_BUCKETS, PRODUCT_MATCHED
 
 #: Ecosystems always shown, even at zero — "gap by ecosystem" is the point.
 DEFAULT_ECOSYSTEMS = ("pypi", "npm", "maven")
@@ -37,11 +41,19 @@ class NvdCompletenessReport:
     def count(self, ecosystem: str, bucket: str) -> int:
         return self.per_ecosystem.get(ecosystem, {}).get(bucket, 0)
 
-    def completeness(self, ecosystem: str) -> float:
+    def product_matched_ratio(self, ecosystem: str) -> float:
+        """
+        Product-matched observations over the denominator for one ecosystem.
+
+        This is an *interim* figure, **not** the PRD completeness number:
+        ``PRODUCT_MATCHED`` counts product matches regardless of version. The
+        version-precise slice replaces this with
+        ``completeness = COVERED / denominator``.
+        """
         denom = self.denominator(ecosystem)
         if denom == 0:
             return 0.0
-        return self.count(ecosystem, COVERED_BUCKET) / denom
+        return self.count(ecosystem, PRODUCT_MATCHED) / denom
 
 
 def aggregate_buckets(
@@ -99,8 +111,11 @@ def render_report(report: NvdCompletenessReport) -> str:
         denom = report.denominator(eco)
         lines.append(f"[{eco}] denominator={denom}")
         for bucket in COVERAGE_BUCKETS:
-            lines.append(f"    {bucket:<12} {report.count(eco, bucket)}")
-        lines.append(f"    completeness={report.completeness(eco):.4f}")
+            lines.append(f"    {bucket:<16} {report.count(eco, bucket)}")
+        lines.append(
+            f"    product_matched_ratio={report.product_matched_ratio(eco):.4f}"
+            "  (interim; NOT completeness — see header)"
+        )
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
