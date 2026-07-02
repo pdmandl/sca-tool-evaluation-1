@@ -14,6 +14,10 @@ uniform contract ([[decision-0001-adapter-pattern-for-tools]]).
 
 See also: [[overview]], [[evaluation-core]], [[glossary]].
 
+> **Not an adapter:** NVD is CPE-indexed, not PURL-indexed, and is delivered as a
+> standalone side-by-side [[nvd-completeness-diagnostic|completeness diagnostic]] —
+> it emits no `Finding`s and is never part of the head-to-head detection table.
+
 ## Base contract (`base.py`)
 
 `VulnerabilityToolAdapter` provides:
