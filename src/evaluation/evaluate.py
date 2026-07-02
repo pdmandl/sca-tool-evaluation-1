@@ -27,6 +27,7 @@ from evaluation.adapters.github_advisory import GitHubAdvisoryAdapter
 from evaluation.adapters.snyk import SnykAdapter
 from evaluation.adapters.oss_index import OSSIndexAdapter
 from evaluation.adapters.trivy import TrivyAdapter
+from evaluation.adapters.nvd import NvdAdapter
 
 from evaluation.core.ground_truth import load_ground_truth
 from evaluation.core.fp_classification import classify_fp_candidate
@@ -255,6 +256,13 @@ def _init_adapter(tool: str, config: dict):
         return TrivyAdapter(config)
     elif tool == "oss-index":
         return OSSIndexAdapter(config)
+    elif tool == "nvd":
+        # NVD is a standalone completeness diagnostic (see
+        # evaluation.nvd_completeness.runner), NOT a detection tool. It is
+        # registered here for adapter-factory consistency only and is
+        # deliberately absent from the --tool choices, EVAL_TOOLS, and the
+        # temporal runner, so it never enters the TP/FP/FN pipeline.
+        return NvdAdapter(config)
     else:
         raise SystemExit(f"Unsupported tool: {tool}")
 

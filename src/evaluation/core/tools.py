@@ -17,6 +17,9 @@ TOOL_FILE_IDS = {
     "Snyk": "snyk",
     "Trivy": "trivy",
     "OSS Index": "ossindex",
+    # NVD is a standalone completeness diagnostic, not a detection tool; the id
+    # is registered here purely for filename / log consistency.
+    "NVD": "nvd",
 }
 
 

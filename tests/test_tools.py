@@ -20,7 +20,12 @@ def test_empty_returns_unknown():
 
 
 def test_registry_does_not_contain_removed_adapters():
-    # NVD, mend, fossa, evaltech were removed from the public release.
-    assert "NVD" not in TOOL_FILE_IDS
+    # mend, fossa, evaltech were removed from the public release.
     assert "Mend" not in TOOL_FILE_IDS
     assert "FOSSA" not in TOOL_FILE_IDS
+
+
+def test_nvd_registered_as_diagnostic_id():
+    # NVD is registered purely for filename / log consistency; it is a
+    # standalone completeness diagnostic, not part of the --tool detection set.
+    assert tool_file_id("NVD") == "nvd"

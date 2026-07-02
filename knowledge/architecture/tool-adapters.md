@@ -54,5 +54,15 @@ matching in [[decision-0005-identifier-gated-project-centric-matching]].
 
 No dynamic discovery. `evaluate.py :: _init_adapter(tool, config)` is a manual
 `if/elif` factory over the ids `dtrack | osv | github | snyk | oss-index |
-trivy`, mirrored in the argparse `--tool` choices. Adding an adapter =
+trivy`, mirrored in the argparse `--tool` choices. Adding a detection adapter =
 subclass + import + factory branch + CLI choice.
+
+## Non-detection adapter: `nvd.py`
+
+`NvdAdapter` reuses the base contract (transport, `*_api.log` tracing, progress)
+but is **not** a detection tool — it emits no `Finding`s
+(`load_findings_for_component` raises) and powers the standalone
+[[nvd-completeness-diagnostic]] instead. It is registered in `_init_adapter` and
+`core/tools.py` for factory/filename consistency, but deliberately kept **out**
+of the `--tool` choices, `EVAL_TOOLS`, and `temporal_runner`, so it never enters
+the TP/FP/FN machinery ([[decision-0008-heuristic-vs-ground-truth-separation]]).
