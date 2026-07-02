@@ -108,10 +108,12 @@ class NvdAdapter(VulnerabilityToolAdapter):
         """
         Fetch one CVE from NVD and return its parsed record.
 
-        Returns ``None`` when the CVE is absent / reserved / rejected in NVD
-        (NVD answers 200 with an empty ``vulnerabilities`` list, or 404). Raises
-        :class:`RuntimeError` when the request cannot be completed after retries,
-        so a transport failure is never silently counted as "CVE absent".
+        Returns ``None`` only when the CVE is genuinely absent / reserved /
+        rejected in NVD — i.e. NVD answers 200 with an empty ``vulnerabilities``
+        list. Raises :class:`RuntimeError` when the request cannot be completed
+        (retries exhausted, a non-JSON body, or an HTTP 404 that signals an
+        invalid / not-yet-active API key), so a transport or auth failure is
+        never silently counted as "CVE absent".
         """
         cve = (cve_id or "").strip()
         if not cve:
@@ -127,6 +129,7 @@ class NvdAdapter(VulnerabilityToolAdapter):
 
     def _get_cve(self, cve_id: str) -> Any:
         params = {"cveId": cve_id}
+        last_status: Optional[int] = None
 
         for attempt in range(1, self.max_retries + 1):
             self._respect_rate_limit()
@@ -143,17 +146,40 @@ class NvdAdapter(VulnerabilityToolAdapter):
                 self._sleep_backoff(attempt)
                 continue
 
+            last_status = r.status_code
+
             if r.status_code == 200:
                 try:
                     data = r.json()
                 except Exception:
-                    return None
+                    # A 200 with a non-JSON / empty body is a transport anomaly,
+                    # NOT an absent CVE (absent = 200 with an empty
+                    # ``vulnerabilities`` list). Retry rather than silently
+                    # returning None, so a flaky endpoint can never masquerade as
+                    # CVE_ABSENT and deflate the completeness figure.
+                    self._sleep_backoff(attempt)
+                    continue
                 self._capture_api_version(data)
                 return data
 
-            # A genuinely unknown / malformed CVE id → treated as absent.
+            # NVD signals an invalid / not-yet-active API key with 404 — a
+            # genuinely unknown CVE comes back as 200 with an empty
+            # ``vulnerabilities`` list, never 404. So a 404 is never "CVE absent";
+            # treating it as such would silently zero the completeness figure.
+            # Retrying a bad key would not help, so fail loudly and immediately.
             if r.status_code == 404:
-                return None
+                hint = (
+                    "Check that NVD_API_KEY is correct and activated."
+                    if self.api_key
+                    else "No NVD_API_KEY is set; if you supplied one, ensure it is "
+                    "exported into the environment."
+                )
+                raise RuntimeError(
+                    f"NVD returned HTTP 404 for {cve_id}. NVD uses 404 to signal an "
+                    f"invalid or not-yet-active API key (unknown CVEs return 200 "
+                    f"with an empty list), so this is not treated as 'CVE absent'. "
+                    f"{hint}"
+                )
 
             # Rate limited or transient server error → back off and retry.
             if r.status_code == 429 or 500 <= r.status_code < 600:
@@ -164,7 +190,8 @@ class NvdAdapter(VulnerabilityToolAdapter):
             self._sleep_backoff(attempt)
 
         raise RuntimeError(
-            f"NVD request for {cve_id} failed after {self.max_retries} attempts"
+            f"NVD request for {cve_id} failed after {self.max_retries} attempts "
+            f"(last HTTP status: {last_status})"
         )
 
     def _capture_api_version(self, data: Any) -> None:

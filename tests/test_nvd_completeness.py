@@ -429,10 +429,22 @@ class TestAdapter:
         a.session.request = MagicMock(return_value=_FakeResp(200, _nvd_body_absent()))
         assert a.fetch_record("CVE-0000-0000") is None
 
-    def test_404_treated_as_absent(self, tmp_path, monkeypatch):
-        a = _make_adapter(tmp_path, monkeypatch)
+    def test_404_raises_not_silently_absent(self, tmp_path, monkeypatch):
+        # NVD uses 404 for an invalid / not-yet-active API key; an unknown CVE is
+        # 200 + empty list. So a 404 must fail loudly, never become CVE_ABSENT.
+        a = _make_adapter(tmp_path, monkeypatch, env={"NVD_API_KEY": "k"})
         a.session.request = MagicMock(return_value=_FakeResp(404, text="not found"))
-        assert a.fetch_record("CVE-0000-0000") is None
+        with pytest.raises(RuntimeError, match="404"):
+            a.fetch_record("CVE-0000-0000")
+
+    def test_non_json_200_body_retries_then_raises(self, tmp_path, monkeypatch):
+        # A 200 with a non-JSON / empty body is a transport anomaly, not an
+        # absent CVE: it must retry and then raise, never silently return None.
+        a = _make_adapter(tmp_path, monkeypatch, env={"NVD_MAX_RETRIES": "2"})
+        a.session.request = MagicMock(return_value=_FakeResp(200, body=None, text=""))
+        with pytest.raises(RuntimeError):
+            a.fetch_record("CVE-2021-1234")
+        assert a.session.request.call_count == 2
 
     def test_empty_cve_short_circuits(self, tmp_path, monkeypatch):
         a = _make_adapter(tmp_path, monkeypatch)
@@ -488,7 +500,9 @@ class TestAdapter:
         a.fetch_record("CVE-2021-1234")
         logs = list(Path(tmp_path).glob("*_nvd_api.log"))
         assert logs, "expected a *_nvd_api.log trace file"
-        assert "CVE-2021-1234" in logs[0].read_text()
+        text = logs[0].read_text()
+        assert "CVE-2021-1234" in text
+        assert "RESPONSE STATUS 200" in text  # status is traced for diagnosis
 
     def test_no_detection_semantics(self, tmp_path, monkeypatch):
         a = _make_adapter(tmp_path, monkeypatch)
@@ -602,6 +616,23 @@ class TestRunner:
         text = out.read_text()
         assert "gt_demo" in text
         assert "overlap" not in text.lower()
+
+    def test_transport_failure_aborts_loudly(self, tmp_path):
+        # A RuntimeError from the adapter (e.g. invalid-key 404) must abort the
+        # run with SystemExit, not produce a silent zero-coverage report.
+        gt_path = tmp_path / "gt.csv"
+        _write_gt_csv(
+            gt_path,
+            [{"ecosystem": "pypi", "component_name": "flask",
+              "component_version": "1.0", "cve": "CVE-1"}],
+        )
+
+        class _BoomAdapter(_FakeAdapter):
+            def fetch_record(self, cve_id):
+                raise RuntimeError("NVD returned HTTP 404 (invalid API key)")
+
+        with pytest.raises(SystemExit):
+            run_nvd_completeness(ground_truth_path=str(gt_path), adapter=_BoomAdapter({}))
 
     def test_empty_ground_truth_fails_loudly(self, tmp_path):
         gt_path = tmp_path / "empty.csv"

@@ -116,7 +116,14 @@ def run_nvd_completeness(
         desc="NVD CVE lookup",
         unit="cve",
     ):
-        records[cve] = adapter.fetch_record(cve)
+        try:
+            records[cve] = adapter.fetch_record(cve)
+        except RuntimeError as exc:
+            # A transport/auth failure (exhausted retries, non-JSON body, or an
+            # invalid-API-key 404) must abort the run: emitting a report where
+            # every lookup silently became CVE_ABSENT would publish a misleading
+            # zero-coverage figure.
+            raise SystemExit(f"NVD lookup for {cve} failed; aborting diagnostic. {exc}")
 
     # ---- Classify every observation (NO_CVE observations stay counted). ----
     classified: List[Tuple[Finding, str]] = []
