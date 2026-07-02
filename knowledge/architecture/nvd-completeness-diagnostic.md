@@ -16,10 +16,9 @@ is delivered as a side-by-side *diagnostic* — never a detection tool. It emits
 / FN, and never computes **Overlap** ([[decision-0008-heuristic-vs-ground-truth-separation]]).
 
 This note describes the current state: a complete end-to-end path from ground
-truth to per-ecosystem coverage-bucket counts, with **generous within-CVE product
-matching**. The remaining version-precise slice (does the observed version fall
-inside a matched CPE range?) is layered on top of the same classifier seam — see
-_Remaining slice_ below.
+truth to a per-ecosystem, **version-precise** completeness figure, built on
+generous within-CVE product matching plus a CPE version-range check — see
+_Version-precise coverage_ below.
 
 See also: [[overview]], [[tool-adapters]], [[orchestration-and-runners]], [[glossary]].
 
@@ -40,21 +39,17 @@ See also: [[overview]], [[tool-adapters]], [[orchestration-and-runners]], [[glos
 3. **Classifier seam** (`coverage.classify_nvd_coverage`) — the pure, I/O-free
    function `(gt_observation, parsed_nvd_record) -> bucket`. Buckets, in
    precedence order:
-   `NO_CVE → CVE_ABSENT → NO_CPE_CONFIG → PRODUCT_MISMATCH → PRODUCT_MATCHED`.
-   Product matching is *generous within a CVE* (OSV already asserts the CVE
-   affects the component): a CPE node matches when its product **or** vendor
-   contains the normalized component token (exact preferred over substring), with
-   maven contributing both `group` and `artifact` as candidate tokens. The
-   matcher never consults versions — "wrong product" stays distinct from a
-   version gap.
+   `NO_CVE → CVE_ABSENT → NO_CPE_CONFIG → PRODUCT_MISMATCH → VERSION_OUT_OF_RANGE
+   → COVERED`. Product matching is *generous within a CVE* (OSV already asserts
+   the CVE affects the component): a CPE node matches when its product **or**
+   vendor contains the normalized component token (exact preferred over
+   substring), with maven contributing both `group` and `artifact` as candidate
+   tokens. "Wrong product" (`PRODUCT_MISMATCH`) stays distinct from a version gap.
 4. **Report** (`report.py`) — per-ecosystem (pypi/npm/maven always shown) bucket
-   counts and the denominator, plus a metadata header stamping UTC fetch date,
-   NVD API version, and ground-truth name. Until the version slice lands the
-   report publishes an interim **`product_matched_ratio`** (product-matched
-   observations over the denominator) and deliberately **not** a "completeness"
-   figure — `PRODUCT_MATCHED` counts matches regardless of version, so calling it
-   completeness would over-report. Written to `<gt>_nvd_completeness.txt`; never
-   into the standard evaluation report or the aggregated LaTeX tables.
+   counts, the denominator, and the headline `completeness = COVERED / denominator`
+   ratio, plus a metadata header stamping UTC fetch date, NVD API version, and
+   ground-truth name. Written to `<gt>_nvd_completeness.txt`; never into the
+   standard evaluation report or the aggregated LaTeX tables.
 
 ## Modules
 
@@ -63,7 +58,7 @@ See also: [[overview]], [[tool-adapters]], [[orchestration-and-runners]], [[glos
 | `adapters/nvd.py` | `NvdAdapter`: NVD 2.0 REST transport, `NVD_API_KEY` rate limiting, retry/backoff, `*_api.log` tracing, `fetch_record(cve) -> ParsedNvdRecord \| None`. No detection semantics (`load_findings_for_component` raises). |
 | `record.py` | `NvdCpeNode` / `ParsedNvdRecord` typed view + `parse_nvd_record(raw)`: flattens an NVD 2.0 `configurations → nodes → cpeMatch` tree into vulnerable CPE nodes. Returns `None` when the CVE is absent; never raises on a malformed body. |
 | `coverage.py` | The `classify_nvd_coverage` seam, the bucket constants, and the greppable per-observation log line (`NVD_COVERAGE | bucket=… `). |
-| `report.py` | `aggregate_buckets` / `render_report` / `write_report`: per-ecosystem bucket counts + denominator + interim `product_matched_ratio`, with the point-in-time metadata header. |
+| `report.py` | `aggregate_buckets` / `render_report` / `write_report`: per-ecosystem bucket counts + denominator + `completeness = COVERED / denominator`, with the point-in-time metadata header. |
 | `runner.py` | The standalone entry point that wires the above against live NVD. |
 
 ## Denominator policy
@@ -91,16 +86,17 @@ the headline figure is **point-in-time, not reproducible** — an accepted
 deviation from [[decision-0003-immutable-time-fixed-ground-truth]], labeled as
 such in the report header.
 
-## Remaining slice — version-precise coverage
+## Version-precise coverage
 
-The terminal `PRODUCT_MATCHED` bucket is split by the version-precise slice into
-`COVERED` / `VERSION_OUT_OF_RANGE`, yielding the headline
-`completeness = COVERED / denominator`. Over the **product-matched nodes only**,
-an observation is `COVERED` iff its version falls inside at least one matched
-node's applicability range (`versionStart*/End*` bounds, or an exact pinned CPE
-version, or a bare wildcard = all versions); otherwise `VERSION_OUT_OF_RANGE`. An
-unparseable range is never silently treated as covered, and ranges of unrelated
-products in a multi-product CVE never flip the verdict. The parsed record already
-carries the CPE nodes (`vendor`, `product`, exact version, `versionStart*/End*`
-bounds) this slice needs; version comparison reuses
-[[evaluation-core|`core/version_matching`]].
+The terminal product-matched observations are split into `COVERED` /
+`VERSION_OUT_OF_RANGE`, yielding the headline
+`completeness = COVERED / denominator`. The decision is made over the
+**product-matched nodes only**: an observation is `COVERED` iff its version falls
+inside at least one matched node's applicability range (`versionStart*/End*`
+bounds, or an exact pinned CPE version, or a bare wildcard = all versions);
+otherwise `VERSION_OUT_OF_RANGE`. An unparseable version/range is never silently
+treated as covered, and the ranges of unrelated products in a multi-product CVE
+never flip the verdict (unmatched nodes are excluded before the version check).
+Version comparison reuses [[evaluation-core|`core/version_matching`]]
+(`version_in_range`); the parsed record already carries the CPE nodes (`vendor`,
+`product`, exact version, `versionStart*/End*` bounds).
