@@ -64,6 +64,26 @@ terms fit together; ambiguities are flagged at the bottom.
 | **FP class** | The heuristic's label on an FP<sub>GT</sub> finding: `FP-CERTAIN`, `FP-LIKELY`, `FP-UNCLEAR`. | FP type, FP subtype |
 | **Heuristic quality (HTP/HFN/HFP/HTN)** | Confusion counts scoring the *heuristic* against the ground-truth verdict, yielding heuristic precision/recall. | heuristic score |
 
+## NVD CPE-data completeness diagnostic
+
+See [[nvd-completeness-diagnostic]] and
+[[prd-nvd-completeness-diagnostic|the PRD]]. This is a *diagnostic*, not a
+detection tool: it never emits TP / FP<sub>GT</sub> / FN and never computes
+**Overlap**.
+
+| Term | Definition | Aliases to avoid |
+| --- | --- | --- |
+| **CPE** | NVD's Common Platform Enumeration product identifier; NVD is CPE-indexed, not PURL-indexed. | platform id |
+| **CPE node** | One `cpeMatch` applicability entry reduced to `(vendor, product, exact version, range bounds)`. | cpe entry, match |
+| **Coverage bucket** | The single mutually-exclusive label `classify_nvd_coverage` assigns a ground-truth observation. | coverage class, category |
+| **`NO_CVE`** | Observation has no CVE (GHSA-only OSV entry); NVD is CVE-keyed and cannot cover it. Stays in the denominator. | no-cve gap |
+| **`CVE_ABSENT`** | CVE absent / reserved / rejected in NVD (no parsed record). | missing cve |
+| **`NO_CPE_CONFIG`** | CVE present in NVD but carries no CPE configuration. | empty config |
+| **`PRODUCT_MISMATCH`** | CPE config present but no node's product/vendor matches the component — kept strictly distinct from a version gap. | wrong product |
+| **`PRODUCT_MATCHED`** | At least one node's product/vendor matches; split by version in a later slice. | matched |
+| **Generous within-CVE product matching** | Because OSV already asserts the CVE affects the component, a node matches when its product *or* vendor **contains** the normalized component token (exact preferred over substring); maven contributes both `group` and `artifact` as tokens. | fuzzy matching |
+| **Completeness bucket precedence** | `NO_CVE → CVE_ABSENT → NO_CPE_CONFIG → PRODUCT_MISMATCH → PRODUCT_MATCHED`. | — |
+
 ## Experiment orchestration
 
 | Term | Definition | Aliases to avoid |

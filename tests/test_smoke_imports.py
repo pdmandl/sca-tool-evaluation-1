@@ -32,3 +32,10 @@ def test_import_evaluate():
 
 def test_import_build_multi_gt():
     from ground_truth_generation import build_multi_ground_truth_dataset  # noqa: F401
+
+
+def test_import_nvd_completeness():
+    from evaluation import nvd_completeness  # noqa: F401
+    from evaluation.nvd_completeness import coverage  # noqa: F401
+    from evaluation.nvd_completeness import record  # noqa: F401
+    from evaluation.nvd_completeness import report  # noqa: F401
