@@ -3,13 +3,15 @@ Per-ecosystem aggregation and rendering of the ``*_nvd_completeness`` report.
 
 The report never enters the head-to-head detection table and never computes
 Overlap. It presents, per ecosystem, the coverage-bucket counts, the denominator,
-and the derived completeness ratio, so a reviewer can reconstruct the figure,
-plus a run-metadata header making the point-in-time / non-reproducible nature
-explicit.
+and a derived ratio, so a reviewer can reconstruct the figure, plus a run-metadata
+header making the point-in-time / non-reproducible nature explicit.
 
-For this walking-skeleton slice completeness is ``PRESENT / total observations``
-in that ecosystem; later slices refine ``PRESENT`` into a version-precise
-covered/uncovered split.
+Buckets (precedence order): ``NO_CVE -> CVE_ABSENT -> NO_CPE_CONFIG ->
+PRODUCT_MISMATCH -> VERSION_OUT_OF_RANGE -> COVERED``. The headline figure is
+``completeness = COVERED / denominator`` per ecosystem: the fraction of
+ground-truth observations for which NVD's CPE data confirms the vulnerable
+component *and version*. ``NO_CVE`` observations (GHSA-only) stay in the
+denominator, since NVD structurally cannot cover them.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
 
-from evaluation.nvd_completeness.coverage import COVERAGE_BUCKETS, COVERED_BUCKET
+from evaluation.nvd_completeness.coverage import COVERAGE_BUCKETS, COVERED
 
 #: Ecosystems always shown, even at zero — "gap by ecosystem" is the point.
 DEFAULT_ECOSYSTEMS = ("pypi", "npm", "maven")
@@ -38,10 +40,17 @@ class NvdCompletenessReport:
         return self.per_ecosystem.get(ecosystem, {}).get(bucket, 0)
 
     def completeness(self, ecosystem: str) -> float:
+        """
+        Headline completeness for one ecosystem: ``COVERED / denominator``.
+
+        The denominator is every observation in the ecosystem (``NO_CVE``
+        included), so this is the fraction NVD's CPE data confirms by product
+        *and* version. Returns ``0.0`` for an empty ecosystem.
+        """
         denom = self.denominator(ecosystem)
         if denom == 0:
             return 0.0
-        return self.count(ecosystem, COVERED_BUCKET) / denom
+        return self.count(ecosystem, COVERED) / denom
 
 
 def aggregate_buckets(
@@ -99,7 +108,7 @@ def render_report(report: NvdCompletenessReport) -> str:
         denom = report.denominator(eco)
         lines.append(f"[{eco}] denominator={denom}")
         for bucket in COVERAGE_BUCKETS:
-            lines.append(f"    {bucket:<12} {report.count(eco, bucket)}")
+            lines.append(f"    {bucket:<20} {report.count(eco, bucket)}")
         lines.append(f"    completeness={report.completeness(eco):.4f}")
         lines.append("")
 

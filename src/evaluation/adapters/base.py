@@ -158,6 +158,8 @@ class VulnerabilityToolAdapter(ABC):
                 duration_ms=duration_ms,
             )
 
+        self._api_logger.info("RESPONSE STATUS %s", getattr(r, "status_code", "?"))
+
         try:
             body = r.json()
             self._api_logger.info(
